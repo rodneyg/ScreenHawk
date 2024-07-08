@@ -14,11 +14,11 @@ This Chrome extension allows users to capture screenshots of web pages and analy
 ## Installation
 
 1. Clone this repository:
-git clone https://github.com/yourusername/ai-screenshot-analyzer.git
+git clone https://github.com/rodneyg/ScreenHawk.git
 
 Copy
 2. Navigate to the project directory:
-cd ai-screenshot-analyzer
+cd ScreenHawk
 
 Copy
 3. Install dependencies:
