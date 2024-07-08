@@ -28,9 +28,6 @@ Copy
 4. Build the extension:
 npm run build
 
-livecodeserver
-Copy
-
 ## Loading the Extension in Chrome
 
 1. Open Chrome and navigate to `chrome://extensions`
