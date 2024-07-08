@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 
-const OPENAI_API_KEY = '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'; // Replace with your actual OpenAI API key
+const OPENAI_API_KEY = ''; // Replace with your actual OpenAI API key
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 interface OpenAIResponse {
@@ -14,14 +14,14 @@ interface OpenAIResponse {
 }
 
 export async function sendToOpenAI(prompt: string, screenshot: string): Promise<string> {
-  try {
-    // Remove the data URL prefix from the screenshot
-    const base64Image = screenshot.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+  console.log("sendToOpenAI called with prompt:", prompt);
+  console.log("Screenshot data:", screenshot ? "Available" : "Not available");
 
+  try {
     const response = await axios.post<OpenAIResponse>(
       OPENAI_API_URL,
       {
-        model: 'gpt-4o', // Using the new 4o model
+        model: 'gpt-4o',
         messages: [
           {
             role: 'user',
@@ -32,9 +32,7 @@ export async function sendToOpenAI(prompt: string, screenshot: string): Promise<
               },
               {
                 type: 'image_url',
-                image_url: {
-                  url: `data:image/png;base64,${base64Image}`
-                }
+                image_url: screenshot
               }
             ]
           }
@@ -49,9 +47,14 @@ export async function sendToOpenAI(prompt: string, screenshot: string): Promise<
       }
     );
 
+    console.log("Received response from OpenAI:", response.data);
     return response.data.choices[0].message.content;
   } catch (error) {
     console.error('Error calling OpenAI API:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+    }
     throw new Error('Failed to get response from OpenAI');
   }
 }
