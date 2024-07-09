@@ -25,20 +25,24 @@ function captureAndSendScreenshot() {
     }
     
     const activeTab = tabs[0];
-    if (!activeTab || !activeTab.id) {
-      console.error("No active tab found");
+    if (!activeTab || typeof activeTab.id !== 'number') {
+      console.error("No active tab found or tab ID is not a number");
       return;
     }
 
-    chrome.tabs.captureVisibleTab(null, {format: 'png'}, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error capturing screenshot:", chrome.runtime.lastError.message);
-        return;
+    chrome.tabs.captureVisibleTab(
+      activeTab.windowId,
+      {format: 'png'},
+      (dataUrl) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error capturing screenshot:", chrome.runtime.lastError.message);
+          return;
+        }
+        
+        console.log("Screenshot captured successfully");
+        sendMessageToContentScript(activeTab.id ?? 0, dataUrl);
       }
-      
-      console.log("Screenshot captured successfully");
-      sendMessageToContentScript(activeTab.id, dataUrl);
-    });
+    );
   });
 }
 
@@ -72,9 +76,13 @@ function injectContentScript(tabId: number) {
       } else {
         console.log("Content script injected successfully");
         // Retry sending the message after injection
-        chrome.tabs.captureVisibleTab(null, {format: 'png'}, (dataUrl) => {
-          sendMessageToContentScript(tabId, dataUrl);
-        });
+        chrome.tabs.captureVisibleTab(
+          tabId,
+          {format: 'png'},
+          (dataUrl) => {
+            sendMessageToContentScript(tabId, dataUrl);
+          }
+        );
       }
     }
   );
@@ -119,22 +127,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   return true;
 });
-
-console.log("Background script loaded and ready.");          chrome.tabs.sendMessage(activeTab.id, {action: "showPromptDialog", screenshot: dataUrl}, (response) => {
-            if (chrome.runtime.lastError) {
-              console.error("Error sending message to content script:", chrome.runtime.lastError);
-            } else {
-              console.log("Message sent to content script, response:", response);
-            }
-          });
-        } else {
-          console.error("No active tab found");
-        }
-      });
-    });
-  } else {
-    console.warn("Unknown command received:", command);
-  }
-});
-
-console.log("Background script loaded and ready.");
