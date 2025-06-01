@@ -1,68 +1,75 @@
-# ScreenHawk Chrome Extension
+# ScreenHawk
 
-## Overview
-
-This Chrome extension allows users to capture screenshots of web pages and analyze them using OpenAI's GPT-4 Vision API. Users can ask questions about the captured screenshot and receive AI-generated responses.
+ScreenHawk is a Chrome extension that allows you to capture a screenshot of your active tab, provide context or ask a question about it, and get an analysis from OpenAI's API. The response from OpenAI is then displayed directly on the page.
 
 ## Features
 
-- Screenshot capture of the current tab
-- Integration with OpenAI's GPT-4 Vision API
-- User-friendly interface for entering prompts
-- Display of AI-generated responses within the extension
+- **Screenshot Capture:** Quickly capture a screenshot of the currently active browser tab.
+- **User Input:** A prompt allows you to enter text to provide context or ask a specific question related to the captured screenshot.
+- **OpenAI Integration:** Seamlessly sends the screenshot and your query to the OpenAI API for in-depth analysis.
+- **In-Page Display:** Displays the OpenAI API's response directly on the current webpage, making it easy to view and use.
+- **Keyboard Shortcut:** Use `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac) for quick and easy screenshot capture.
 
-## Installation
+## How to Use
 
-1. Clone this repository:
-git clone https://github.com/rodneyg/ScreenHawk.git
+1.  **Activate the Extension:** Click the ScreenHawk extension icon in your Chrome toolbar or use the keyboard shortcut (`Ctrl+Shift+S` or `Cmd+Shift+S`).
+2.  **Capture Screenshot:** The extension will automatically capture a screenshot of your current tab.
+3.  **Provide Context/Query:** A dialog box will appear. Enter any context or specific questions you have about the screenshot.
+4.  **Submit for Analysis:** Click the "Submit" button.
+5.  **View Results:** The response from the OpenAI API will be displayed in an overlay on the current page.
 
-Copy
-2. Navigate to the project directory:
-cd ScreenHawk
+## Installation (Development Build)
 
-Copy
-3. Install dependencies:
-npm install
+To install ScreenHawk for development:
 
-Copy
-4. Build the extension:
-npm run build
+1.  **Clone the Repository:**
+    ```bash
+    git clone <repository-url>
+    cd screenhawk
+    ```
+2.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Build the Extension:**
+    ```bash
+    npm run build
+    ```
 
-## Loading the Extension in Chrome
+4.  **Load Unpacked Extension in Chrome:**
+    *   Open Chrome and navigate to `chrome://extensions`.
+    *   Enable "Developer mode" using the toggle switch in the top right corner.
+    *   Click the "Load unpacked" button.
+    *   Select the `dist` directory from your cloned repository.
 
-1. Open Chrome and navigate to `chrome://extensions`
-2. Enable "Developer mode" in the top right corner
-3. Click "Load unpacked" and select the `dist` folder in your project directory
+## Configuration
 
-## Usage
+Before using the extension, you need to configure your OpenAI API key:
 
-1. Click the extension icon in your Chrome toolbar
-2. Click "Capture Screenshot" to capture the current tab
-3. Enter a prompt about the screenshot in the dialog that appears
-4. View the AI-generated response in a new dialog
+1.  Open the file `src/api.ts` in your code editor.
+2.  Locate the following line:
+    ```typescript
+    const OPENAI_API_KEY = '';
+    ```
+3.  Replace `''` with your actual OpenAI API key.
+4.  **Important:** Rebuild the extension (`npm run build`) after changing the API key for the changes to take effect.
 
-## Development
+## Key Technologies
 
-- `npm run build`: Build the extension
-- `npm run watch`: Watch for changes and rebuild
-- `npm run lint`: Run ESLint
-- `npm test`: Run tests (if implemented)
-
-## Project Structure
-
-- `src/`: Source TypeScript files
-- `public/`: Static files (HTML, manifest)
-- `dist/`: Build output (generated)
+-   **TypeScript:** For robust and maintainable code.
+-   **Webpack:** To bundle the JavaScript, TypeScript, and other assets.
+-   **Chrome Extension APIs:** To interact with the Chrome browser, capture tabs, and display content.
+-   **OpenAI API:** For image analysis and contextual understanding.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, please feel free to:
+
+1.  Fork the repository.
+2.  Create a new branch for your feature or fix.
+3.  Make your changes.
+4.  Submit a pull request with a clear description of your changes.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- OpenAI for providing the GPT-4 Vision API
-- The Chrome Extensions development community
+This project is currently not licensed. Please refer to the repository for any updates on licensing.
