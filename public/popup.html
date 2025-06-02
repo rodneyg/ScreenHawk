@@ -3,32 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screenshot to OpenAI</title>
+    <title>ScreenHawk</title>
     <style>
         body {
-            width: 300px;
-            padding: 10px;
+            width: 350px;
+            padding: 15px;
             font-family: Arial, sans-serif;
+            margin: 0;
         }
+        
+        .header {
+            margin-bottom: 15px;
+        }
+        
+        .header h2 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .capture-section {
+            margin-bottom: 20px;
+        }
+        
         button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
+            font-weight: 500;
         }
+        
         button:hover {
             background-color: #45a049;
+        }
+        
+        button.secondary {
+            background-color: #6c757d;
+            font-size: 12px;
+            padding: 8px;
+            margin-top: 5px;
+        }
+        
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+        
+        .history-section {
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .history-header h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .thumbnail {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            margin-right: 10px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+        }
+        
+        .item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .item-prompt {
+            font-size: 12px;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .item-time {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .item-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .action-btn {
+            font-size: 10px;
+            padding: 4px 6px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            min-width: 50px;
+        }
+        
+        .view-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .view-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        
+        .empty-history {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            padding: 20px;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            padding: 10px;
         }
     </style>
 </head>
 <body>
-    <h2>Screenshot to OpenAI</h2>
-    <p>Click the button below to capture the current tab and enter a prompt.</p>
-    <button id="captureButton">Capture and Prompt</button>
+    <div class="header">
+        <h2>ScreenHawk</h2>
+        <p style="margin: 0; font-size: 12px; color: #666;">Capture screenshots and get AI insights</p>
+    </div>
+    
+    <div class="capture-section">
+        <button id="captureButton">Capture and Prompt</button>
+    </div>
+    
+    <div class="history-section">
+        <div class="history-header">
+            <h3>Recent Interactions</h3>
+            <button id="clearHistoryButton" class="secondary">Clear All</button>
+        </div>
+        <div class="history-list" id="historyList">
+            <div class="loading">Loading history...</div>
+        </div>
+    </div>
+    
     <script src="popup.js"></script>
 </body>
 </html>

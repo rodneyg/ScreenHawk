@@ -5,7 +5,8 @@ module.exports = {
   entry: {
     popup: './src/popup.ts',
     background: './src/background.ts',
-    content: './src/content.ts'
+    content: './src/content.ts',
+    'interaction-viewer': './src/interaction-viewer.ts'
   },
   module: {
     rules: [

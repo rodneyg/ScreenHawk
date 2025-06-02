@@ -1,6 +1,8 @@
 // background.ts
 
 import { sendToOpenAI } from './api';
+import { saveInteraction, type Interaction } from './storage';
+import { generateId } from './imageUtils';
 
 console.log("Background script initializing...");
 
@@ -95,13 +97,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background: Received sendToOpenAI request");
     console.log("Prompt:", request.prompt);
     console.log("Screenshot data:", request.screenshot ? "Available" : "Not available");
+    console.log("Compressed screenshot data:", request.compressedScreenshot ? "Available" : "Not available");
+    console.log("Thumbnail data:", request.thumbnail ? "Available" : "Not available");
     console.log("Sending to OpenAI...");
-    sendToOpenAI(request.prompt, request.screenshot)
-      .then(response => {
-        console.log("Received response from OpenAI:", response);
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-          if (tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {action: "openAIResponse", response}, (response) => {
+    
+    // Get current tab info for storing in interaction
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      const activeTab = tabs[0];
+      const tabUrl = activeTab?.url || '';
+      const tabTitle = activeTab?.title || '';
+      
+      sendToOpenAI(request.prompt, request.screenshot)
+        .then(async response => {
+          console.log("Received response from OpenAI:", response);
+          
+          // Save interaction to storage using compressed data from content script
+          try {
+            const interaction: Interaction = {
+              id: generateId(),
+              timestamp: Date.now(),
+              url: tabUrl,
+              title: tabTitle,
+              prompt: request.prompt,
+              response: response,
+              screenshot: request.compressedScreenshot || request.screenshot,
+              thumbnail: request.thumbnail || request.screenshot
+            };
+            
+            await saveInteraction(interaction);
+            console.log("Interaction saved to storage");
+          } catch (error) {
+            console.error("Error saving interaction:", error);
+          }
+          
+          // Send response to content script
+          if (activeTab && activeTab.id) {
+            chrome.tabs.sendMessage(activeTab.id, {action: "openAIResponse", response}, (response) => {
               if (chrome.runtime.lastError) {
                 console.error("Error sending response to content script:", chrome.runtime.lastError.message);
               } else {
@@ -111,16 +142,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           } else {
             console.error("No active tab found");
           }
-        });
-      })
-      .catch(error => {
-        console.error('Error in sendToOpenAI:', error);
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-          if (tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {action: "displayError", error: error.message});
+        })
+        .catch(error => {
+          console.error('Error in sendToOpenAI:', error);
+          if (activeTab && activeTab.id) {
+            chrome.tabs.sendMessage(activeTab.id, {action: "displayError", error: error.message});
           }
         });
-      });
+    });
   } else {
     console.warn("Unknown action received:", request.action);
   }

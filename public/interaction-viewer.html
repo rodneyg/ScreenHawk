@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScreenHawk - Interaction Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: 2px solid white;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .close-btn:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .meta-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .meta-item {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .meta-label {
+            font-weight: bold;
+            color: #333;
+            display: inline-block;
+            width: 80px;
+        }
+        
+        .meta-value {
+            color: #666;
+        }
+        
+        .screenshot-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .screenshot:hover {
+            transform: scale(1.02);
+        }
+        
+        .prompt-section, .response-section {
+            margin-bottom: 30px;
+        }
+        
+        .prompt-text, .response-text {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        .response-text {
+            border-left-color: #28a745;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 16px;
+            padding: 50px;
+        }
+        
+        .error {
+            text-align: center;
+            color: #dc3545;
+            font-size: 16px;
+            padding: 50px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .delete-action {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .delete-action:hover {
+            background-color: #c82333;
+        }
+        
+        .revisit-action {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .revisit-action:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Interaction Details</h1>
+            <button class="close-btn" onclick="window.close()">Close</button>
+        </div>
+        
+        <div class="content" id="content">
+            <div class="loading">Loading interaction...</div>
+        </div>
+    </div>
+    
+    <script src="interaction-viewer.js"></script>
+</body>
+</html>
