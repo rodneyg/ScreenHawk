@@ -5,6 +5,7 @@ ScreenHawk is a Chrome extension that allows you to capture a screenshot of your
 ## Features
 
 - **Screenshot Capture:** Quickly capture a screenshot of the currently active browser tab.
+- **Area Selection:** Select specific areas of the screenshot using an intuitive click-and-drag interface.
 - **User Input:** A prompt allows you to enter text to provide context or ask a specific question related to the captured screenshot.
 - **OpenAI Integration:** Seamlessly sends the screenshot and your query to the OpenAI API for in-depth analysis.
 - **In-Page Display:** Displays the OpenAI API's response directly on the current webpage, making it easy to view and use.
@@ -14,9 +15,10 @@ ScreenHawk is a Chrome extension that allows you to capture a screenshot of your
 
 1.  **Activate the Extension:** Click the ScreenHawk extension icon in your Chrome toolbar or use the keyboard shortcut (`Ctrl+Shift+S` or `Cmd+Shift+S`).
 2.  **Capture Screenshot:** The extension will automatically capture a screenshot of your current tab.
-3.  **Provide Context/Query:** A dialog box will appear. Enter any context or specific questions you have about the screenshot.
-4.  **Submit for Analysis:** Click the "Submit" button.
-5.  **View Results:** The response from the OpenAI API will be displayed in an overlay on the current page.
+3.  **Select Area:** Click and drag to select a specific area of the screenshot you want to analyze. You can press Escape to cancel the selection.
+4.  **Provide Context/Query:** A dialog box will appear. Enter any context or specific questions you have about the selected area.
+5.  **Submit for Analysis:** Click the "Submit" button.
+6.  **View Results:** The response from the OpenAI API will be displayed in an overlay on the current page.
 
 ## Installation (Development Build)
 
