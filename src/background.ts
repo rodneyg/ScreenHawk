@@ -2,7 +2,7 @@
 
 import { sendToOpenAI } from './api';
 import { saveInteraction, type Interaction } from './storage';
-import { compressImage, createThumbnail, generateId } from './imageUtils';
+import { generateId } from './imageUtils';
 
 console.log("Background script initializing...");
 
@@ -97,6 +97,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background: Received sendToOpenAI request");
     console.log("Prompt:", request.prompt);
     console.log("Screenshot data:", request.screenshot ? "Available" : "Not available");
+    console.log("Compressed screenshot data:", request.compressedScreenshot ? "Available" : "Not available");
+    console.log("Thumbnail data:", request.thumbnail ? "Available" : "Not available");
     console.log("Sending to OpenAI...");
     
     // Get current tab info for storing in interaction
@@ -109,13 +111,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .then(async response => {
           console.log("Received response from OpenAI:", response);
           
-          // Save interaction to storage
+          // Save interaction to storage using compressed data from content script
           try {
-            const [compressedScreenshot, thumbnail] = await Promise.all([
-              compressImage(request.screenshot, 0.6, 1200),
-              createThumbnail(request.screenshot, 120)
-            ]);
-            
             const interaction: Interaction = {
               id: generateId(),
               timestamp: Date.now(),
@@ -123,8 +120,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               title: tabTitle,
               prompt: request.prompt,
               response: response,
-              screenshot: compressedScreenshot,
-              thumbnail: thumbnail
+              screenshot: request.compressedScreenshot || request.screenshot,
+              thumbnail: request.thumbnail || request.screenshot
             };
             
             await saveInteraction(interaction);

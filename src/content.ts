@@ -1,6 +1,10 @@
 // content.ts
 
+import { compressImage, createThumbnail } from './imageUtils';
+
 let screenshot: string | null = null;
+let compressedScreenshot: string | null = null;
+let thumbnail: string | null = null;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("Content script received message:", request);
@@ -13,7 +17,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Showing prompt dialog...");
     screenshot = request.screenshot;
     console.log("Received screenshot:", request.screenshot);
-    showPromptDialog();
+    
+    // Compress image and create thumbnail
+    compressImageData(request.screenshot).then(() => {
+      showPromptDialog();
+    }).catch(error => {
+      console.error("Error compressing image:", error);
+      // Fallback to original screenshot
+      compressedScreenshot = request.screenshot;
+      thumbnail = request.screenshot;
+      showPromptDialog();
+    });
+    
     sendResponse({status: "showing prompt dialog"});
   } else if (request.action === "displayError") {
     console.error("Error from OpenAI:", request.error);
@@ -82,8 +97,14 @@ function showPromptDialog() {
   document.getElementById('submit')?.addEventListener('click', () => {
     const promptElement = document.getElementById('prompt') as HTMLTextAreaElement;
     const prompt = promptElement.value;
-    console.log("Sending to OpenAI:", {action: "sendToOpenAI", prompt, screenshot});
-    chrome.runtime.sendMessage({action: "sendToOpenAI", prompt, screenshot}, (response) => {
+    console.log("Sending to OpenAI:", {action: "sendToOpenAI", prompt, screenshot, compressedScreenshot, thumbnail});
+    chrome.runtime.sendMessage({
+      action: "sendToOpenAI", 
+      prompt, 
+      screenshot: screenshot, // Original for OpenAI
+      compressedScreenshot: compressedScreenshot, // For storage
+      thumbnail: thumbnail // For storage
+    }, (response) => {
       console.log("Response from background script:", response);
       if (chrome.runtime.lastError) {
         console.error("Error:", chrome.runtime.lastError);
@@ -95,4 +116,20 @@ function showPromptDialog() {
   document.getElementById('cancel')?.addEventListener('click', () => {
     document.body.removeChild(dialog);
   });
+}
+
+async function compressImageData(imageDataUrl: string) {
+  try {
+    console.log("Compressing image data...");
+    const [compressed, thumb] = await Promise.all([
+      compressImage(imageDataUrl, 0.6, 1200),
+      createThumbnail(imageDataUrl, 120)
+    ]);
+    compressedScreenshot = compressed;
+    thumbnail = thumb;
+    console.log("Image compression completed");
+  } catch (error) {
+    console.error("Error during image compression:", error);
+    throw error;
+  }
 }

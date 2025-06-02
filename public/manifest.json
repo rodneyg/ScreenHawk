@@ -32,5 +32,11 @@
       },
       "description": "Capture screenshot and open prompt dialog"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["interaction-viewer.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
