@@ -641,70 +641,145 @@ function getFormFieldContext(formField: HTMLTextAreaElement | HTMLInputElement):
 function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElement) {
   const context = getFormFieldContext(formField);
   
-  const dialog = document.createElement('div');
-  dialog.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: white;
-    padding: 24px;
+  // Determine if field is small or large to decide interface style
+  const fieldRect = formField.getBoundingClientRect();
+  const isSmallField = fieldRect.height < 60 || formField.tagName.toLowerCase() === 'input';
+  
+  if (isSmallField) {
+    showInlinePromptForSmallField(formField, context);
+  } else {
+    showInlinePromptForLargeField(formField, context);
+  }
+}
+
+function showInlinePromptForSmallField(formField: HTMLTextAreaElement | HTMLInputElement, context: string) {
+  // Create a compact inline prompt that appears next to the field
+  const promptContainer = document.createElement('div');
+  promptContainer.style.cssText = `
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #667eea;
     border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     z-index: 10001;
-    max-width: 500px;
-    width: 90%;
+    padding: 12px;
+    margin-top: 4px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-width: 280px;
   `;
   
-  dialog.innerHTML = `
-    <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #1a1a1a; display: flex; align-items: center; gap: 8px;">
-      <span>✨</span> AI Writing Assistant
-    </h2>
-    ${context ? `<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; color: #666;">
-      <strong>Context:</strong> ${context}
-    </div>` : ''}
-    <label for="userPrompt" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">What would you like to write?</label>
-    <textarea id="userPrompt" rows="3" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;" placeholder="e.g., 'Write a professional 2-sentence summary about my experience at Apple'"></textarea>
-    <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
-      <button id="cancelFormAssist" style="padding: 10px 20px; border: 2px solid #e1e5e9; background: white; color: #666; border-radius: 6px; cursor: pointer; font-weight: 500;">Cancel</button>
-      <button id="generateContent" style="padding: 10px 20px; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; cursor: pointer; font-weight: 500; position: relative;">
-        <span id="buttonText">Generate</span>
-        <span id="loadingSpinner" style="display: none;">Generating...</span>
+  promptContainer.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <span style="font-size: 14px;">✨</span>
+      <span style="font-size: 12px; font-weight: 500; color: #667eea;">AI Assistant</span>
+    </div>
+    ${context ? `<div style="font-size: 11px; color: #666; margin-bottom: 8px; padding: 6px; background: #f8f9fa; border-radius: 4px;">${context}</div>` : ''}
+    <input type="text" id="quickPrompt" placeholder="What to write? (e.g., professional bio)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; box-sizing: border-box; margin-bottom: 8px;">
+    <div style="display: flex; gap: 6px; justify-content: flex-end;">
+      <button id="cancelQuickPrompt" style="padding: 6px 12px; border: 1px solid #ddd; background: white; color: #666; border-radius: 4px; cursor: pointer; font-size: 11px;">Cancel</button>
+      <button id="generateQuickContent" style="padding: 6px 12px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer; font-size: 11px; min-width: 60px;">
+        <span id="quickButtonText">Generate</span>
+        <span id="quickLoadingSpinner" style="display: none;">...</span>
       </button>
     </div>
   `;
   
-  // Add backdrop
-  const backdrop = document.createElement('div');
-  backdrop.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 10000;
-  `;
+  // Position the container relative to the field
+  const fieldParent = formField.offsetParent as HTMLElement || formField.parentElement || document.body;
   
-  document.body.appendChild(backdrop);
-  document.body.appendChild(dialog);
+  // Ensure proper positioning context
+  if (window.getComputedStyle(fieldParent).position === 'static') {
+    fieldParent.style.position = 'relative';
+  }
   
-  // Focus the prompt input
-  const promptInput = document.getElementById('userPrompt') as HTMLTextAreaElement;
+  fieldParent.appendChild(promptContainer);
+  
+  // Focus the input
+  const promptInput = promptContainer.querySelector('#quickPrompt') as HTMLInputElement;
   setTimeout(() => promptInput.focus(), 100);
   
-  const generateButton = document.getElementById('generateContent') as HTMLButtonElement;
-  const buttonText = document.getElementById('buttonText') as HTMLSpanElement;
-  const loadingSpinner = document.getElementById('loadingSpinner') as HTMLSpanElement;
+  setupInlinePromptHandlers(promptContainer, formField, context, 'quick');
+}
 
-  const closeDialog = () => {
-    if (backdrop.parentElement) {
-      document.body.removeChild(backdrop);
+function showInlinePromptForLargeField(formField: HTMLTextAreaElement | HTMLInputElement, context: string) {
+  // Create an expanded inline prompt that appears above the field
+  const promptContainer = document.createElement('div');
+  promptContainer.style.cssText = `
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 10001;
+    padding: 16px;
+    margin-bottom: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-width: 320px;
+  `;
+  
+  promptContainer.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+      <span style="font-size: 16px;">✨</span>
+      <span style="font-size: 14px; font-weight: 500; color: #667eea;">AI Writing Assistant</span>
+    </div>
+    ${context ? `<div style="font-size: 12px; color: #666; margin-bottom: 12px; padding: 8px; background: #f8f9fa; border-radius: 4px;"><strong>Context:</strong> ${context}</div>` : ''}
+    <label for="extendedPrompt" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">What would you like to write?</label>
+    <textarea id="extendedPrompt" rows="2" placeholder="e.g., 'Write a 3-paragraph professional summary about my software engineering experience'" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; margin-bottom: 12px;"></textarea>
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button id="cancelExtendedPrompt" style="padding: 8px 16px; border: 1px solid #ddd; background: white; color: #666; border-radius: 4px; cursor: pointer; font-size: 13px;">Cancel</button>
+      <button id="generateExtendedContent" style="padding: 8px 16px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer; font-size: 13px; min-width: 80px;">
+        <span id="extendedButtonText">Generate</span>
+        <span id="extendedLoadingSpinner" style="display: none;">Generating...</span>
+      </button>
+    </div>
+  `;
+  
+  // Position the container relative to the field
+  const fieldParent = formField.offsetParent as HTMLElement || formField.parentElement || document.body;
+  
+  // Ensure proper positioning context
+  if (window.getComputedStyle(fieldParent).position === 'static') {
+    fieldParent.style.position = 'relative';
+  }
+  
+  fieldParent.appendChild(promptContainer);
+  
+  // Focus the input
+  const promptInput = promptContainer.querySelector('#extendedPrompt') as HTMLTextAreaElement;
+  setTimeout(() => promptInput.focus(), 100);
+  
+  setupInlinePromptHandlers(promptContainer, formField, context, 'extended');
+}
+
+function setupInlinePromptHandlers(
+  container: HTMLElement, 
+  formField: HTMLTextAreaElement | HTMLInputElement, 
+  context: string, 
+  type: 'quick' | 'extended'
+) {
+  const promptInput = container.querySelector(`#${type}Prompt`) as HTMLInputElement | HTMLTextAreaElement;
+  const generateButton = container.querySelector(`#generate${type === 'quick' ? 'Quick' : 'Extended'}Content`) as HTMLButtonElement;
+  const cancelButton = container.querySelector(`#cancel${type === 'quick' ? 'Quick' : 'Extended'}Prompt`) as HTMLButtonElement;
+  const buttonText = container.querySelector(`#${type}ButtonText`) as HTMLSpanElement;
+  const loadingSpinner = container.querySelector(`#${type}LoadingSpinner`) as HTMLSpanElement;
+
+  const closeContainer = () => {
+    if (container.parentElement) {
+      container.parentElement.removeChild(container);
     }
-    if (dialog.parentElement) {
-      document.body.removeChild(dialog);
-    }
+  };
+
+  const resetButtonState = () => {
+    generateButton.disabled = false;
+    buttonText.style.display = 'inline';
+    loadingSpinner.style.display = 'none';
+    generateButton.style.cursor = 'pointer';
   };
 
   generateButton.addEventListener('click', () => {
@@ -729,6 +804,8 @@ function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElem
     fullPrompt += `The user wants: ${userPrompt}. Please provide ONLY the text content that should go in the form field, without any additional explanation or formatting. Keep it appropriate for the context and purpose of the field.`;
     
     console.log("Sending form assistance request to OpenAI:", fullPrompt);
+    currentFormField = formField; // Set current form field for filling
+    
     chrome.runtime.sendMessage({
       action: "sendToOpenAI", 
       prompt: fullPrompt, 
@@ -738,33 +815,40 @@ function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElem
       if (chrome.runtime.lastError) {
         console.error("Error:", chrome.runtime.lastError);
         alert("Sorry, there was an error generating content. Please check your OpenAI API key and try again.");
-        
-        // Reset button state
-        generateButton.disabled = false;
-        buttonText.style.display = 'inline';
-        loadingSpinner.style.display = 'none';
-        generateButton.style.cursor = 'pointer';
+        resetButtonState();
       } else {
-        closeDialog();
+        closeContainer();
       }
     });
   });
 
-  document.getElementById('cancelFormAssist')?.addEventListener('click', closeDialog);
-  backdrop.addEventListener('click', closeDialog);
+  cancelButton.addEventListener('click', closeContainer);
   
   // Close on escape key
   const escapeHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      closeDialog();
+      closeContainer();
       document.removeEventListener('keydown', escapeHandler);
     }
   };
   document.addEventListener('keydown', escapeHandler);
   
-  // Allow enter to submit if not shift+enter
-  promptInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  // Close when clicking outside
+  const clickOutsideHandler = (e: Event) => {
+    if (!container.contains(e.target as Node) && !formField.contains(e.target as Node)) {
+      closeContainer();
+      document.removeEventListener('click', clickOutsideHandler);
+      document.removeEventListener('keydown', escapeHandler);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener('click', clickOutsideHandler);
+  }, 100);
+  
+  // Allow enter to submit (but not for textarea prompts with shift+enter)
+  promptInput.addEventListener('keydown', (e: Event) => {
+    const keyEvent = e as KeyboardEvent;
+    if (keyEvent.key === 'Enter' && (type === 'quick' || !keyEvent.shiftKey)) {
       e.preventDefault();
       generateButton.click();
     }
@@ -1031,8 +1115,8 @@ function showSuccessFeedback(field: HTMLElement) {
 
 // Add keyboard shortcut for magic wand mode
 document.addEventListener('keydown', (e) => {
-  // Ctrl+Shift+W or Cmd+Shift+W for magic wand
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'W') {
+  // Ctrl+Shift+Z or Cmd+Shift+Z for magic wand
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') {
     e.preventDefault();
     activateMagicWandMode();
   }
