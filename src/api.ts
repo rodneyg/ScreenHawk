@@ -13,11 +13,26 @@ interface OpenAIResponse {
   }[];
 }
 
-export async function sendToOpenAI(prompt: string, screenshot: string): Promise<string> {
+export async function sendToOpenAI(prompt: string, screenshot?: string): Promise<string> {
   console.log("sendToOpenAI called with prompt:", prompt);
   console.log("Screenshot data:", screenshot ? "Available" : "Not available");
 
   try {
+    const messageContent: any[] = [
+      {
+        type: 'text',
+        text: prompt
+      }
+    ];
+
+    // Only add image if screenshot is provided
+    if (screenshot) {
+      messageContent.push({
+        type: 'image_url',
+        image_url: screenshot
+      });
+    }
+
     const response = await axios.post<OpenAIResponse>(
       OPENAI_API_URL,
       {
@@ -25,16 +40,7 @@ export async function sendToOpenAI(prompt: string, screenshot: string): Promise<
         messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: prompt
-              },
-              {
-                type: 'image_url',
-                image_url: screenshot
-              }
-            ]
+            content: messageContent
           }
         ],
         max_tokens: 500

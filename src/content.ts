@@ -3,6 +3,10 @@
 let screenshot: string | null = null;
 let croppedScreenshot: string | null = null;
 
+// Form assistance functionality
+let formAssistanceButtons: Map<HTMLElement, HTMLElement> = new Map();
+let currentFormField: HTMLTextAreaElement | HTMLInputElement | null = null;
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("Content script received message:", request);
   if (request.action === "prepareCapture") {
@@ -24,9 +28,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Received OpenAI response:", request.response);
     showOpenAIResponse(request.response);
     sendResponse({status: "response displayed"});
+  } else if (request.action === "formFillResponse") {
+    console.log("Received form fill response:", request.response);
+    fillFormField(request.response);
+    sendResponse({status: "form filled"});
   }
   return true;
 });
+
+// Initialize form assistance when page loads
+document.addEventListener('DOMContentLoaded', initializeFormAssistance);
+// Also run immediately in case DOMContentLoaded already fired
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeFormAssistance);
+} else {
+  initializeFormAssistance();
+}
 
 function showOpenAIResponse(response: string) {
   const responseDialog = document.createElement('div');
@@ -270,4 +287,345 @@ function showPromptDialog() {
   document.getElementById('cancel')?.addEventListener('click', () => {
     document.body.removeChild(dialog);
   });
+}
+
+// Form assistance functionality
+function initializeFormAssistance() {
+  console.log("Initializing form assistance...");
+  detectFormFields();
+  
+  // Set up mutation observer to handle dynamically added form fields
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element;
+            // Check if the added node or its descendants contain form fields
+            const formFields = element.querySelectorAll('textarea, input[type="text"]');
+            formFields.forEach((field) => addAssistanceButton(field as HTMLTextAreaElement | HTMLInputElement));
+            
+            // Also check if the node itself is a form field
+            if (isEligibleFormField(element as HTMLElement)) {
+              addAssistanceButton(element as HTMLTextAreaElement | HTMLInputElement);
+            }
+          }
+        });
+      }
+    });
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+function detectFormFields() {
+  // Find all textarea elements and larger text input fields
+  const textareas = document.querySelectorAll('textarea');
+  const textInputs = document.querySelectorAll('input[type="text"]');
+  
+  textareas.forEach((textarea) => {
+    addAssistanceButton(textarea as HTMLTextAreaElement);
+  });
+  
+  // Filter text inputs to only include larger ones (exclude small fields like search boxes)
+  textInputs.forEach((input) => {
+    if (isEligibleFormField(input as HTMLElement)) {
+      addAssistanceButton(input as HTMLInputElement);
+    }
+  });
+}
+
+function isEligibleFormField(element: HTMLElement): boolean {
+  if (element.tagName.toLowerCase() === 'textarea') {
+    return true;
+  }
+  
+  if (element.tagName.toLowerCase() === 'input') {
+    const input = element as HTMLInputElement;
+    if (input.type !== 'text') return false;
+    
+    // Check if it's a larger text input (not a small search box or similar)
+    const style = window.getComputedStyle(input);
+    const width = parseInt(style.width) || input.offsetWidth;
+    const minLength = input.minLength || input.maxLength;
+    
+    // Consider it eligible if:
+    // - Width is substantial (>200px) OR
+    // - Has a substantial maxLength/minLength OR  
+    // - Size attribute suggests it's meant for longer text OR
+    // - Has placeholder text suggesting longer input OR
+    // - Context suggests it's for longer text (name, role, etc.)
+    return width > 200 || 
+           (minLength && minLength > 50) || 
+           (input.maxLength && input.maxLength > 100) ||
+           (input.size && input.size > 30) ||
+           (input.placeholder && input.placeholder.length > 20) ||
+           /description|bio|comment|message|experience|summary|story|essay|feedback|review/i.test(input.placeholder || input.name || input.id || '');
+  }
+  
+  return false;
+}
+
+function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) {
+  // Skip if button already exists for this field
+  if (formAssistanceButtons.has(formField)) {
+    return;
+  }
+  
+  // Create the assistance button
+  const button = document.createElement('button');
+  button.innerHTML = '✨'; // Magic wand emoji
+  button.title = 'Get AI assistance for this field';
+  button.style.cssText = `
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 10000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-family: Arial, sans-serif;
+  `;
+  
+  // Add hover effect
+  button.addEventListener('mouseenter', () => {
+    button.style.transform = 'scale(1.1)';
+    button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+  });
+  
+  button.addEventListener('mouseleave', () => {
+    button.style.transform = 'scale(1)';
+    button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+  });
+  
+  // Position the button relative to the form field
+  const parentElement = formField.offsetParent || formField.parentElement || document.body;
+  
+  // Make sure the parent has relative positioning
+  const parentStyle = window.getComputedStyle(parentElement);
+  if (parentStyle.position === 'static') {
+    (parentElement as HTMLElement).style.position = 'relative';
+  }
+  
+  // Calculate position relative to the form field
+  const fieldRect = formField.getBoundingClientRect();
+  const parentRect = parentElement.getBoundingClientRect();
+  
+  button.style.top = `${fieldRect.top - parentRect.top + 8}px`;
+  button.style.right = `${parentRect.right - fieldRect.right + 8}px`;
+  
+  // Add click handler
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    currentFormField = formField;
+    showFormAssistanceDialog(formField);
+  });
+  
+  // Append button to the parent element
+  parentElement.appendChild(button);
+  
+  // Store the button reference
+  formAssistanceButtons.set(formField, button);
+  
+  // Clean up when form field is removed
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.removedNodes.forEach((node) => {
+        if (node === formField || (node as Element).contains?.(formField)) {
+          observer.disconnect();
+          removeAssistanceButton(formField);
+        }
+      });
+    });
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+function removeAssistanceButton(formField: HTMLElement) {
+  const button = formAssistanceButtons.get(formField);
+  if (button && button.parentElement) {
+    button.parentElement.removeChild(button);
+  }
+  formAssistanceButtons.delete(formField);
+}
+
+function getFormFieldContext(formField: HTMLTextAreaElement | HTMLInputElement): string {
+  let context = '';
+  
+  // Get placeholder text
+  if (formField.placeholder) {
+    context += `Field placeholder: "${formField.placeholder}". `;
+  }
+  
+  // Get associated label
+  let label = '';
+  if (formField.id) {
+    const labelElement = document.querySelector(`label[for="${formField.id}"]`);
+    if (labelElement) {
+      label = labelElement.textContent?.trim() || '';
+    }
+  }
+  
+  // If no label found by ID, look for labels that contain this field
+  if (!label) {
+    const parentLabel = formField.closest('label');
+    if (parentLabel) {
+      label = parentLabel.textContent?.replace(formField.textContent || '', '').trim() || '';
+    }
+  }
+  
+  // Look for nearby text that might be a label
+  if (!label) {
+    const prevSibling = formField.previousElementSibling;
+    if (prevSibling && (prevSibling.tagName === 'SPAN' || prevSibling.tagName === 'DIV' || prevSibling.tagName === 'P')) {
+      const text = prevSibling.textContent?.trim();
+      if (text && text.length < 100) {
+        label = text;
+      }
+    }
+  }
+  
+  if (label) {
+    context += `Field label: "${label}". `;
+  }
+  
+  // Get form name or title if available
+  const form = formField.closest('form');
+  if (form) {
+    const formTitle = form.querySelector('h1, h2, h3, h4, h5, h6');
+    if (formTitle) {
+      context += `Form section: "${formTitle.textContent?.trim()}". `;
+    }
+  }
+  
+  // Get field name/id hints
+  if (formField.name) {
+    context += `Field name: "${formField.name}". `;
+  }
+  
+  return context.trim();
+}
+
+function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElement) {
+  const context = getFormFieldContext(formField);
+  
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    z-index: 10001;
+    max-width: 500px;
+    width: 90%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+  
+  dialog.innerHTML = `
+    <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #1a1a1a;">AI Writing Assistant</h2>
+    ${context ? `<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; color: #666;">
+      <strong>Context:</strong> ${context}
+    </div>` : ''}
+    <label for="userPrompt" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">What would you like to write?</label>
+    <textarea id="userPrompt" rows="3" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;" placeholder="e.g., 'Write a professional 2-sentence summary about my experience at Apple'"></textarea>
+    <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+      <button id="cancelFormAssist" style="padding: 10px 20px; border: 2px solid #e1e5e9; background: white; color: #666; border-radius: 6px; cursor: pointer; font-weight: 500;">Cancel</button>
+      <button id="generateContent" style="padding: 10px 20px; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; cursor: pointer; font-weight: 500;">Generate</button>
+    </div>
+  `;
+  
+  document.body.appendChild(dialog);
+  
+  // Focus the prompt input
+  const promptInput = document.getElementById('userPrompt') as HTMLTextAreaElement;
+  setTimeout(() => promptInput.focus(), 100);
+
+  document.getElementById('generateContent')?.addEventListener('click', () => {
+    const userPrompt = promptInput.value.trim();
+    if (!userPrompt) {
+      alert('Please describe what you want to write.');
+      return;
+    }
+    
+    // Create a comprehensive prompt for GPT
+    let fullPrompt = `You are helping a user fill out a form field. `;
+    if (context) {
+      fullPrompt += `Context about the form field: ${context} `;
+    }
+    fullPrompt += `The user wants: ${userPrompt}. Please provide ONLY the text content that should go in the form field, without any additional explanation or formatting. Keep it appropriate for the context and purpose of the field.`;
+    
+    console.log("Sending form assistance request to OpenAI:", fullPrompt);
+    chrome.runtime.sendMessage({
+      action: "sendToOpenAI", 
+      prompt: fullPrompt, 
+      isFormAssistance: true
+    }, (response) => {
+      console.log("Response from background script:", response);
+      if (chrome.runtime.lastError) {
+        console.error("Error:", chrome.runtime.lastError);
+        alert("Sorry, there was an error generating content. Please try again.");
+      }
+    });
+    
+    document.body.removeChild(dialog);
+  });
+
+  document.getElementById('cancelFormAssist')?.addEventListener('click', () => {
+    document.body.removeChild(dialog);
+  });
+  
+  // Close on escape key
+  const escapeHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      document.body.removeChild(dialog);
+      document.removeEventListener('keydown', escapeHandler);
+    }
+  };
+  document.addEventListener('keydown', escapeHandler);
+}
+
+function fillFormField(content: string) {
+  if (!currentFormField) {
+    console.error("No current form field to fill");
+    return;
+  }
+  
+  // Set the value
+  currentFormField.value = content;
+  
+  // Trigger events that frameworks might listen to
+  const events = ['input', 'change', 'blur'];
+  events.forEach(eventType => {
+    const event = new Event(eventType, { bubbles: true });
+    currentFormField!.dispatchEvent(event);
+  });
+  
+  // Focus the field to show the user what happened
+  currentFormField.focus();
+  
+  // Clear the current field reference
+  currentFormField = null;
 }
