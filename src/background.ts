@@ -13,6 +13,9 @@ chrome.commands.onCommand.addListener((command) => {
   if (command === "capture-screenshot") {
     console.log("Capture screenshot command received");
     captureAndSendScreenshot();
+  } else if (command === "magic-wand") {
+    console.log("Magic wand command received");
+    activateMagicWandOnActiveTab();
   }
 });
 
@@ -41,6 +44,38 @@ function captureAndSendScreenshot() {
         
         console.log("Screenshot captured successfully");
         sendMessageToContentScript(activeTab.id ?? 0, dataUrl);
+      }
+    );
+  });
+}
+
+function activateMagicWandOnActiveTab() {
+  console.log("Activating magic wand on active tab...");
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error querying tabs:", chrome.runtime.lastError.message);
+      return;
+    }
+    
+    const activeTab = tabs[0];
+    if (!activeTab || typeof activeTab.id !== 'number') {
+      console.error("No active tab found or tab ID is not a number");
+      return;
+    }
+
+    chrome.tabs.sendMessage(
+      activeTab.id,
+      { action: "activateMagicWand" },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error sending magic wand message to content script:", chrome.runtime.lastError.message);
+          // Attempt to inject content script if it's not already there
+          if (activeTab.id) {
+            injectContentScript(activeTab.id);
+          }
+        } else {
+          console.log("Magic wand message sent to content script, response:", response);
+        }
       }
     );
   });

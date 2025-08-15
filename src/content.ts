@@ -7,6 +7,11 @@ let croppedScreenshot: string | null = null;
 let formAssistanceButtons: Map<HTMLElement, HTMLElement> = new Map();
 let currentFormField: HTMLTextAreaElement | HTMLInputElement | null = null;
 
+// Magic wand mode for manual field selection
+let magicWandMode: boolean = false;
+let highlightedFields: HTMLElement[] = [];
+let magicWandOverlay: HTMLElement | null = null;
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("Content script received message:", request);
   if (request.action === "prepareCapture") {
@@ -32,6 +37,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Received form fill response:", request.response);
     fillFormField(request.response);
     sendResponse({status: "form filled"});
+  } else if (request.action === "activateMagicWand") {
+    console.log("Activating magic wand mode via message");
+    activateMagicWandMode();
+    sendResponse({status: "magic wand activated"});
   }
   return true;
 });
@@ -322,18 +331,27 @@ function initializeFormAssistance() {
 }
 
 function detectFormFields() {
-  // Find all textarea elements and larger text input fields
+  console.log("ScreenHawk: Detecting form fields...");
+  
+  // Find all textarea elements and text-like input fields
   const textareas = document.querySelectorAll('textarea');
-  const textInputs = document.querySelectorAll('input[type="text"]');
+  // Include inputs without type (defaults to text) and explicit text inputs
+  const textInputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type=""]');
+  
+  console.log(`ScreenHawk: Found ${textareas.length} textareas and ${textInputs.length} text inputs`);
   
   textareas.forEach((textarea) => {
+    console.log("ScreenHawk: Adding button to textarea:", textarea);
     addAssistanceButton(textarea as HTMLTextAreaElement);
   });
   
   // Filter text inputs to only include larger ones (exclude small fields like search boxes)
   textInputs.forEach((input) => {
     if (isEligibleFormField(input as HTMLElement)) {
+      console.log("ScreenHawk: Adding button to eligible input:", input);
       addAssistanceButton(input as HTMLInputElement);
+    } else {
+      console.log("ScreenHawk: Skipping ineligible input:", input);
     }
   });
 }
@@ -345,25 +363,35 @@ function isEligibleFormField(element: HTMLElement): boolean {
   
   if (element.tagName.toLowerCase() === 'input') {
     const input = element as HTMLInputElement;
-    if (input.type !== 'text') return false;
+    // Accept text inputs, inputs without type (default to text), or empty type
+    if (input.type !== 'text' && input.type !== '' && input.type !== undefined) return false;
+    
+    // Skip password, email, search, etc. unless specifically text
+    if (input.type && input.type !== 'text' && input.type !== '') return false;
+    
+    // Skip hidden fields
+    const style = window.getComputedStyle(input);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
     
     // Check if it's a larger text input (not a small search box or similar)
-    const style = window.getComputedStyle(input);
     const width = parseInt(style.width) || input.offsetWidth;
     const minLength = input.minLength || input.maxLength;
     
+    console.log(`ScreenHawk: Evaluating input - width: ${width}, maxLength: ${input.maxLength}, placeholder: "${input.placeholder}", name: "${input.name}", id: "${input.id}"`);
+    
     // Consider it eligible if:
-    // - Width is substantial (>200px) OR
+    // - Width is substantial (>150px) OR
     // - Has a substantial maxLength/minLength OR  
     // - Size attribute suggests it's meant for longer text OR
     // - Has placeholder text suggesting longer input OR
-    // - Context suggests it's for longer text (name, role, etc.)
-    return width > 200 || 
-           (minLength && minLength > 50) || 
-           (input.maxLength && input.maxLength > 100) ||
-           (input.size && input.size > 30) ||
-           (input.placeholder && input.placeholder.length > 20) ||
-           /description|bio|comment|message|experience|summary|story|essay|feedback|review/i.test(input.placeholder || input.name || input.id || '');
+    // - Context suggests it's for longer text (description, bio, etc.) OR
+    // - Has a name/id that suggests it's for content (like PasteBin's paste_code)
+    return width > 150 || 
+           (minLength && minLength > 30) || 
+           (input.maxLength && input.maxLength > 50) ||
+           (input.size && input.size > 20) ||
+           (input.placeholder && input.placeholder.length > 15) ||
+           /description|bio|comment|message|experience|summary|story|essay|feedback|review|content|code|paste|text|body|article|post|note/i.test(input.placeholder || input.name || input.id || input.className || '');
   }
   
   return false;
@@ -372,13 +400,17 @@ function isEligibleFormField(element: HTMLElement): boolean {
 function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) {
   // Skip if button already exists for this field
   if (formAssistanceButtons.has(formField)) {
+    console.log("ScreenHawk: Button already exists for field:", formField);
     return;
   }
   
   // Skip if field is disabled or readonly
   if (formField.disabled || formField.readOnly) {
+    console.log("ScreenHawk: Skipping disabled/readonly field:", formField);
     return;
   }
+  
+  console.log("ScreenHawk: Adding assistance button to field:", formField);
   
   // Create the assistance button
   const button = document.createElement('button');
@@ -406,6 +438,7 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
     line-height: 1;
     font-family: Arial, sans-serif;
     opacity: 0.8;
+    pointer-events: auto;
   `;
   
   // Add hover effect
@@ -434,28 +467,72 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
     }, 100);
   });
   
-  // Position the button relative to the form field
-  const parentElement = formField.offsetParent || formField.parentElement || document.body;
-  
-  // Make sure the parent has relative positioning
-  const parentStyle = window.getComputedStyle(parentElement);
-  if (parentStyle.position === 'static') {
-    (parentElement as HTMLElement).style.position = 'relative';
-  }
-  
-  // Calculate position relative to the form field
-  const updateButtonPosition = () => {
-    const fieldRect = formField.getBoundingClientRect();
-    const parentRect = parentElement.getBoundingClientRect();
-    
-    button.style.top = `${fieldRect.top - parentRect.top + 8}px`;
-    button.style.right = `${parentRect.right - fieldRect.right + 8}px`;
+  // Improved positioning strategy
+  const positionButton = () => {
+    try {
+      const fieldRect = formField.getBoundingClientRect();
+      const fieldStyle = window.getComputedStyle(formField);
+      
+      // Try to find the best positioning strategy
+      let parentElement = formField.offsetParent as HTMLElement || formField.parentElement || document.body;
+      
+      // If field has position relative/absolute, we can position relative to it
+      if (fieldStyle.position === 'relative' || fieldStyle.position === 'absolute') {
+        parentElement = formField;
+        button.style.top = '8px';
+        button.style.right = '8px';
+        button.style.left = 'auto';
+        button.style.bottom = 'auto';
+      } else {
+        // Position relative to the closest positioned parent
+        while (parentElement && parentElement !== document.body) {
+          const parentStyle = window.getComputedStyle(parentElement);
+          if (parentStyle.position !== 'static') {
+            break;
+          }
+          parentElement = parentElement.offsetParent as HTMLElement || parentElement.parentElement || document.body;
+        }
+        
+        // Make sure the parent has relative positioning if it's static
+        const parentStyle = window.getComputedStyle(parentElement);
+        if (parentStyle.position === 'static') {
+          parentElement.style.position = 'relative';
+        }
+        
+        // Calculate position relative to the positioned parent
+        const parentRect = parentElement.getBoundingClientRect();
+        
+        button.style.top = `${fieldRect.top - parentRect.top + 8}px`;
+        button.style.right = `${parentRect.right - fieldRect.right + 8}px`;
+        button.style.left = 'auto';
+        button.style.bottom = 'auto';
+      }
+      
+      console.log("ScreenHawk: Button positioned successfully");
+    } catch (error) {
+      console.error("ScreenHawk: Error positioning button:", error);
+      // Fallback: position relative to body with fixed positioning
+      const fieldRect = formField.getBoundingClientRect();
+      button.style.position = 'fixed';
+      button.style.top = `${fieldRect.top + 8}px`;
+      button.style.right = `${window.innerWidth - fieldRect.right + 8}px`;
+      button.style.left = 'auto';
+      button.style.bottom = 'auto';
+    }
   };
   
-  updateButtonPosition();
+  // Initial positioning
+  positionButton();
   
-  // Update position on resize
-  window.addEventListener('resize', updateButtonPosition);
+  // Update position on resize and scroll
+  const updatePosition = () => {
+    if (document.contains(formField) && document.contains(button)) {
+      positionButton();
+    }
+  };
+  
+  window.addEventListener('resize', updatePosition);
+  window.addEventListener('scroll', updatePosition, true);
   
   // Add click handler
   button.addEventListener('click', (e) => {
@@ -465,11 +542,16 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
     showFormAssistanceDialog(formField);
   });
   
+  // Find the best parent to append the button to
+  let buttonParent = formField.offsetParent as HTMLElement || formField.parentElement || document.body;
+  
   // Append button to the parent element
-  parentElement.appendChild(button);
+  buttonParent.appendChild(button);
   
   // Store the button reference
   formAssistanceButtons.set(formField, button);
+  
+  console.log("ScreenHawk: Button added successfully to parent:", buttonParent);
   
   // Clean up when form field is removed
   const observer = new MutationObserver((mutations) => {
@@ -477,7 +559,8 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
       mutation.removedNodes.forEach((node) => {
         if (node === formField || (node as Element).contains?.(formField)) {
           observer.disconnect();
-          window.removeEventListener('resize', updateButtonPosition);
+          window.removeEventListener('resize', updatePosition);
+          window.removeEventListener('scroll', updatePosition, true);
           removeAssistanceButton(formField);
         }
       });
@@ -741,3 +824,216 @@ function fillFormField(content: string) {
   // Clear the current field reference
   currentFormField = null;
 }
+
+// Magic wand functionality for manual field selection
+function activateMagicWandMode() {
+  if (magicWandMode) {
+    deactivateMagicWandMode();
+    return;
+  }
+  
+  console.log("ScreenHawk: Activating magic wand mode");
+  magicWandMode = true;
+  
+  // Find all potential text input fields (more permissive than automatic detection)
+  const allTextFields = document.querySelectorAll('textarea, input[type="text"], input:not([type]), input[type=""], input[type="search"], input[type="email"], input[type="url"]');
+  
+  // Create overlay for instructions
+  magicWandOverlay = document.createElement('div');
+  magicWandOverlay.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid rgba(255,255,255,0.2);
+  `;
+  magicWandOverlay.innerHTML = '🪄 Magic Wand Mode: Click on any text field to add AI assistance • Press Escape to exit';
+  document.body.appendChild(magicWandOverlay);
+  
+  // Highlight all potential fields
+  allTextFields.forEach((field) => {
+    const element = field as HTMLElement;
+    if (isFieldVisible(element)) {
+      highlightField(element);
+    }
+  });
+  
+  // Add escape key listener
+  document.addEventListener('keydown', magicWandEscapeHandler);
+}
+
+function deactivateMagicWandMode() {
+  console.log("ScreenHawk: Deactivating magic wand mode");
+  magicWandMode = false;
+  
+  // Remove overlay
+  if (magicWandOverlay && magicWandOverlay.parentElement) {
+    magicWandOverlay.parentElement.removeChild(magicWandOverlay);
+    magicWandOverlay = null;
+  }
+  
+  // Remove highlights
+  highlightedFields.forEach((field) => {
+    removeHighlight(field);
+  });
+  highlightedFields = [];
+  
+  // Remove escape key listener
+  document.removeEventListener('keydown', magicWandEscapeHandler);
+}
+
+function magicWandEscapeHandler(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    deactivateMagicWandMode();
+  }
+}
+
+function isFieldVisible(element: HTMLElement): boolean {
+  const style = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  
+  return style.display !== 'none' && 
+         style.visibility !== 'hidden' && 
+         style.opacity !== '0' &&
+         rect.width > 0 && 
+         rect.height > 0 &&
+         rect.top < window.innerHeight &&
+         rect.bottom > 0 &&
+         rect.left < window.innerWidth &&
+         rect.right > 0;
+}
+
+function highlightField(field: HTMLElement) {
+  // Skip if already highlighted or has a button
+  if (highlightedFields.includes(field) || formAssistanceButtons.has(field)) {
+    return;
+  }
+  
+  highlightedFields.push(field);
+  
+  // Store original styles
+  const originalBorder = field.style.border;
+  const originalBoxShadow = field.style.boxShadow;
+  const originalTransition = field.style.transition;
+  
+  // Apply highlight styles
+  field.style.transition = 'all 0.3s ease';
+  field.style.border = '2px solid #667eea';
+  field.style.boxShadow = '0 0 10px rgba(102, 126, 234, 0.3), inset 0 0 10px rgba(102, 126, 234, 0.1)';
+  
+  // Add click handler for magic wand mode
+  const clickHandler = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (magicWandMode) {
+      // Add AI assistance to this field
+      addAssistanceButton(field as HTMLTextAreaElement | HTMLInputElement);
+      
+      // Remove highlight
+      removeHighlight(field);
+      
+      // Show success feedback
+      showSuccessFeedback(field);
+    }
+  };
+  
+  field.addEventListener('click', clickHandler);
+  
+  // Store cleanup data
+  (field as any).__magicWandData = {
+    originalBorder,
+    originalBoxShadow,
+    originalTransition,
+    clickHandler
+  };
+}
+
+function removeHighlight(field: HTMLElement) {
+  const magicWandData = (field as any).__magicWandData;
+  if (!magicWandData) return;
+  
+  // Restore original styles
+  field.style.border = magicWandData.originalBorder;
+  field.style.boxShadow = magicWandData.originalBoxShadow;
+  field.style.transition = magicWandData.originalTransition;
+  
+  // Remove click handler
+  field.removeEventListener('click', magicWandData.clickHandler);
+  
+  // Clean up
+  delete (field as any).__magicWandData;
+  
+  // Remove from highlighted list
+  const index = highlightedFields.indexOf(field);
+  if (index > -1) {
+    highlightedFields.splice(index, 1);
+  }
+}
+
+function showSuccessFeedback(field: HTMLElement) {
+  const feedback = document.createElement('div');
+  feedback.style.cssText = `
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #22c55e;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 10002;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  `;
+  feedback.textContent = '✅ AI assistance added!';
+  
+  // Position relative to field
+  const fieldRect = field.getBoundingClientRect();
+  feedback.style.position = 'fixed';
+  feedback.style.top = `${fieldRect.top - 40}px`;
+  feedback.style.left = `${fieldRect.left + fieldRect.width / 2}px`;
+  
+  document.body.appendChild(feedback);
+  
+  // Animate in
+  setTimeout(() => {
+    feedback.style.opacity = '1';
+  }, 10);
+  
+  // Remove after delay
+  setTimeout(() => {
+    feedback.style.opacity = '0';
+    setTimeout(() => {
+      if (feedback.parentElement) {
+        feedback.parentElement.removeChild(feedback);
+      }
+    }, 300);
+  }, 2000);
+}
+
+// Add keyboard shortcut for magic wand mode
+document.addEventListener('keydown', (e) => {
+  // Ctrl+Shift+W or Cmd+Shift+W for magic wand
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'W') {
+    e.preventDefault();
+    activateMagicWandMode();
+  }
+});

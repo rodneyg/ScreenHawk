@@ -31,6 +31,13 @@
         "mac": "Command+Shift+S"
       },
       "description": "Capture screenshot and open prompt dialog"
+    },
+    "magic-wand": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+W",
+        "mac": "Command+Shift+W"
+      },
+      "description": "Activate magic wand mode to manually select form fields for AI assistance"
     }
   }
 }
