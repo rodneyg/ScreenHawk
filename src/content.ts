@@ -375,10 +375,16 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
     return;
   }
   
+  // Skip if field is disabled or readonly
+  if (formField.disabled || formField.readOnly) {
+    return;
+  }
+  
   // Create the assistance button
   const button = document.createElement('button');
   button.innerHTML = '✨'; // Magic wand emoji
   button.title = 'Get AI assistance for this field';
+  button.type = 'button'; // Prevent form submission
   button.style.cssText = `
     position: absolute;
     top: 8px;
@@ -399,17 +405,33 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
     justify-content: center;
     line-height: 1;
     font-family: Arial, sans-serif;
+    opacity: 0.8;
   `;
   
   // Add hover effect
   button.addEventListener('mouseenter', () => {
     button.style.transform = 'scale(1.1)';
     button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+    button.style.opacity = '1';
   });
   
   button.addEventListener('mouseleave', () => {
     button.style.transform = 'scale(1)';
     button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+    button.style.opacity = '0.8';
+  });
+  
+  // Show/hide button based on field focus
+  formField.addEventListener('focus', () => {
+    button.style.opacity = '1';
+  });
+  
+  formField.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (!button.matches(':hover')) {
+        button.style.opacity = '0.8';
+      }
+    }, 100);
   });
   
   // Position the button relative to the form field
@@ -422,11 +444,18 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
   }
   
   // Calculate position relative to the form field
-  const fieldRect = formField.getBoundingClientRect();
-  const parentRect = parentElement.getBoundingClientRect();
+  const updateButtonPosition = () => {
+    const fieldRect = formField.getBoundingClientRect();
+    const parentRect = parentElement.getBoundingClientRect();
+    
+    button.style.top = `${fieldRect.top - parentRect.top + 8}px`;
+    button.style.right = `${parentRect.right - fieldRect.right + 8}px`;
+  };
   
-  button.style.top = `${fieldRect.top - parentRect.top + 8}px`;
-  button.style.right = `${parentRect.right - fieldRect.right + 8}px`;
+  updateButtonPosition();
+  
+  // Update position on resize
+  window.addEventListener('resize', updateButtonPosition);
   
   // Add click handler
   button.addEventListener('click', (e) => {
@@ -448,6 +477,7 @@ function addAssistanceButton(formField: HTMLTextAreaElement | HTMLInputElement) 
       mutation.removedNodes.forEach((node) => {
         if (node === formField || (node as Element).contains?.(formField)) {
           observer.disconnect();
+          window.removeEventListener('resize', updateButtonPosition);
           removeAssistanceButton(formField);
         }
       });
@@ -545,7 +575,9 @@ function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElem
   `;
   
   dialog.innerHTML = `
-    <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #1a1a1a;">AI Writing Assistant</h2>
+    <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #1a1a1a; display: flex; align-items: center; gap: 8px;">
+      <span>✨</span> AI Writing Assistant
+    </h2>
     ${context ? `<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; color: #666;">
       <strong>Context:</strong> ${context}
     </div>` : ''}
@@ -553,22 +585,58 @@ function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElem
     <textarea id="userPrompt" rows="3" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;" placeholder="e.g., 'Write a professional 2-sentence summary about my experience at Apple'"></textarea>
     <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
       <button id="cancelFormAssist" style="padding: 10px 20px; border: 2px solid #e1e5e9; background: white; color: #666; border-radius: 6px; cursor: pointer; font-weight: 500;">Cancel</button>
-      <button id="generateContent" style="padding: 10px 20px; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; cursor: pointer; font-weight: 500;">Generate</button>
+      <button id="generateContent" style="padding: 10px 20px; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; cursor: pointer; font-weight: 500; position: relative;">
+        <span id="buttonText">Generate</span>
+        <span id="loadingSpinner" style="display: none;">Generating...</span>
+      </button>
     </div>
   `;
   
+  // Add backdrop
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+  `;
+  
+  document.body.appendChild(backdrop);
   document.body.appendChild(dialog);
   
   // Focus the prompt input
   const promptInput = document.getElementById('userPrompt') as HTMLTextAreaElement;
   setTimeout(() => promptInput.focus(), 100);
+  
+  const generateButton = document.getElementById('generateContent') as HTMLButtonElement;
+  const buttonText = document.getElementById('buttonText') as HTMLSpanElement;
+  const loadingSpinner = document.getElementById('loadingSpinner') as HTMLSpanElement;
 
-  document.getElementById('generateContent')?.addEventListener('click', () => {
+  const closeDialog = () => {
+    if (backdrop.parentElement) {
+      document.body.removeChild(backdrop);
+    }
+    if (dialog.parentElement) {
+      document.body.removeChild(dialog);
+    }
+  };
+
+  generateButton.addEventListener('click', () => {
     const userPrompt = promptInput.value.trim();
     if (!userPrompt) {
       alert('Please describe what you want to write.');
+      promptInput.focus();
       return;
     }
+    
+    // Show loading state
+    generateButton.disabled = true;
+    buttonText.style.display = 'none';
+    loadingSpinner.style.display = 'inline';
+    generateButton.style.cursor = 'wait';
     
     // Create a comprehensive prompt for GPT
     let fullPrompt = `You are helping a user fill out a form field. `;
@@ -586,25 +654,38 @@ function showFormAssistanceDialog(formField: HTMLTextAreaElement | HTMLInputElem
       console.log("Response from background script:", response);
       if (chrome.runtime.lastError) {
         console.error("Error:", chrome.runtime.lastError);
-        alert("Sorry, there was an error generating content. Please try again.");
+        alert("Sorry, there was an error generating content. Please check your OpenAI API key and try again.");
+        
+        // Reset button state
+        generateButton.disabled = false;
+        buttonText.style.display = 'inline';
+        loadingSpinner.style.display = 'none';
+        generateButton.style.cursor = 'pointer';
+      } else {
+        closeDialog();
       }
     });
-    
-    document.body.removeChild(dialog);
   });
 
-  document.getElementById('cancelFormAssist')?.addEventListener('click', () => {
-    document.body.removeChild(dialog);
-  });
+  document.getElementById('cancelFormAssist')?.addEventListener('click', closeDialog);
+  backdrop.addEventListener('click', closeDialog);
   
   // Close on escape key
   const escapeHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      document.body.removeChild(dialog);
+      closeDialog();
       document.removeEventListener('keydown', escapeHandler);
     }
   };
   document.addEventListener('keydown', escapeHandler);
+  
+  // Allow enter to submit if not shift+enter
+  promptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      generateButton.click();
+    }
+  });
 }
 
 function fillFormField(content: string) {
@@ -613,18 +694,49 @@ function fillFormField(content: string) {
     return;
   }
   
-  // Set the value
-  currentFormField.value = content;
+  // Clear any existing value
+  currentFormField.value = '';
   
-  // Trigger events that frameworks might listen to
-  const events = ['input', 'change', 'blur'];
-  events.forEach(eventType => {
-    const event = new Event(eventType, { bubbles: true });
-    currentFormField!.dispatchEvent(event);
-  });
+  // Animate typing effect for better UX
+  let index = 0;
+  const typewriterSpeed = 20; // milliseconds per character
   
-  // Focus the field to show the user what happened
+  const typeWriter = () => {
+    if (index < content.length) {
+      currentFormField!.value += content.charAt(index);
+      index++;
+      
+      // Trigger input event for each character (for reactive frameworks)
+      const inputEvent = new Event('input', { bubbles: true });
+      currentFormField!.dispatchEvent(inputEvent);
+      
+      setTimeout(typeWriter, typewriterSpeed);
+    } else {
+      // Final events after typing is complete
+      const events = ['change', 'blur'];
+      events.forEach(eventType => {
+        const event = new Event(eventType, { bubbles: true });
+        currentFormField!.dispatchEvent(event);
+      });
+      
+      // Show a subtle success indication
+      const button = formAssistanceButtons.get(currentFormField!);
+      if (button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅';
+        button.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+        
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }, 2000);
+      }
+    }
+  };
+  
+  // Focus the field and start typing animation
   currentFormField.focus();
+  typeWriter();
   
   // Clear the current field reference
   currentFormField = null;
