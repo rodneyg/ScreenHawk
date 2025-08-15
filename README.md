@@ -1,6 +1,6 @@
 # ScreenHawk
 
-ScreenHawk is a Chrome extension that allows you to capture a screenshot of your active tab, provide context or ask a question about it, and get an analysis from OpenAI's API. The response from OpenAI is then displayed directly on the page.
+ScreenHawk is a Chrome extension that allows you to capture a screenshot of your active tab, provide context or ask a question about it, and get an analysis from OpenAI's API. The response from OpenAI is then displayed directly on the page. Additionally, ScreenHawk provides AI-powered form filling assistance to help you write content for text areas and input fields.
 
 ## Features
 
@@ -10,15 +10,47 @@ ScreenHawk is a Chrome extension that allows you to capture a screenshot of your
 - **OpenAI Integration:** Seamlessly sends the screenshot and your query to the OpenAI API for in-depth analysis.
 - **In-Page Display:** Displays the OpenAI API's response directly on the current webpage, making it easy to view and use.
 - **Keyboard Shortcut:** Use `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac) for quick and easy screenshot capture.
+- **🆕 AI Form Assistance:** Automatically detects form fields and provides AI-powered writing assistance with smart context extraction.
+
+### AI Form Assistance
+
+ScreenHawk now automatically adds assistance buttons (✨) to text areas and large text input fields on any webpage. When you click these buttons, you can:
+
+- **Get AI-powered writing help:** Simply describe what you want to write in natural language
+- **Context-aware assistance:** The AI understands the field's purpose from labels, placeholders, and surrounding context
+- **Smart form detection:** Automatically identifies suitable form fields (text areas and substantial text inputs)
+- **Seamless integration:** Works alongside the existing screenshot functionality without interference
+
+**How it works:**
+1. Load any webpage with forms (job applications, feedback forms, contact forms, etc.)
+2. Look for the ✨ assistance buttons in the top-right corner of eligible text fields
+3. Click the button to open the AI Writing Assistant
+4. Describe what you want to write (e.g., "Write a professional bio for a software engineer")
+5. The AI generates appropriate content and fills the field with a smooth typing animation
 
 ## How to Use
 
+### Screenshot Analysis
 1.  **Activate the Extension:** Click the ScreenHawk extension icon in your Chrome toolbar or use the keyboard shortcut (`Ctrl+Shift+S` or `Cmd+Shift+S`).
 2.  **Capture Screenshot:** The extension will automatically capture a screenshot of your current tab.
 3.  **Select Area:** Click and drag to select a specific area of the screenshot you want to analyze. You can press Escape to cancel the selection.
 4.  **Provide Context/Query:** A dialog box will appear. Enter any context or specific questions you have about the selected area.
 5.  **Submit for Analysis:** Click the "Submit" button.
 6.  **View Results:** The response from the OpenAI API will be displayed in an overlay on the current page.
+
+### AI Form Assistance
+1.  **Navigate to any webpage with forms** (job applications, feedback forms, contact forms, etc.)
+2.  **Look for the ✨ assistance buttons** that automatically appear in the top-right corner of text areas and large text input fields
+3.  **Click an assistance button** to open the AI Writing Assistant dialog
+4.  **Describe what you want to write** in natural language (e.g., "Write a professional summary of my experience at Apple")
+5.  **Click Generate** to have AI create appropriate content for the field
+6.  **Watch as the content is filled** with a smooth typing animation
+
+The AI assistant is context-aware and will consider:
+- Field labels and placeholders
+- Form section headings
+- Field names and purposes
+- Your specific writing request
 
 ## Installation (Development Build)
 

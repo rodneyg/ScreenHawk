@@ -13,6 +13,9 @@ chrome.commands.onCommand.addListener((command) => {
   if (command === "capture-screenshot") {
     console.log("Capture screenshot command received");
     captureAndSendScreenshot();
+  } else if (command === "magic-wand") {
+    console.log("Magic wand command received");
+    activateMagicWandOnActiveTab();
   }
 });
 
@@ -41,6 +44,38 @@ function captureAndSendScreenshot() {
         
         console.log("Screenshot captured successfully");
         sendMessageToContentScript(activeTab.id ?? 0, dataUrl);
+      }
+    );
+  });
+}
+
+function activateMagicWandOnActiveTab() {
+  console.log("Activating magic wand on active tab...");
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error querying tabs:", chrome.runtime.lastError.message);
+      return;
+    }
+    
+    const activeTab = tabs[0];
+    if (!activeTab || typeof activeTab.id !== 'number') {
+      console.error("No active tab found or tab ID is not a number");
+      return;
+    }
+
+    chrome.tabs.sendMessage(
+      activeTab.id,
+      { action: "activateMagicWand" },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error sending magic wand message to content script:", chrome.runtime.lastError.message);
+          // Attempt to inject content script if it's not already there
+          if (activeTab.id) {
+            injectContentScript(activeTab.id);
+          }
+        } else {
+          console.log("Magic wand message sent to content script, response:", response);
+        }
       }
     );
   });
@@ -95,13 +130,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background: Received sendToOpenAI request");
     console.log("Prompt:", request.prompt);
     console.log("Screenshot data:", request.screenshot ? "Available" : "Not available");
+    console.log("Is form assistance:", request.isFormAssistance || false);
     console.log("Sending to OpenAI...");
+    
     sendToOpenAI(request.prompt, request.screenshot)
       .then(response => {
         console.log("Received response from OpenAI:", response);
         chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
           if (tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {action: "openAIResponse", response}, (response) => {
+            // Send different message type based on whether it's form assistance
+            const messageAction = request.isFormAssistance ? "formFillResponse" : "openAIResponse";
+            chrome.tabs.sendMessage(tabs[0].id, {action: messageAction, response}, (response) => {
               if (chrome.runtime.lastError) {
                 console.error("Error sending response to content script:", chrome.runtime.lastError.message);
               } else {

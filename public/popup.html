@@ -3,32 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screenshot to OpenAI</title>
+    <title>ScreenHawk</title>
     <style>
         body {
-            width: 300px;
-            padding: 10px;
-            font-family: Arial, sans-serif;
+            width: 320px;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+        }
+        h2 {
+            margin: 0 0 16px 0;
+            font-size: 20px;
+            color: #1a1a1a;
+        }
+        p {
+            margin: 0 0 16px 0;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
         button {
             width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
+            padding: 12px 16px;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .primary-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+        .primary-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+        .secondary-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .secondary-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .emoji {
             font-size: 16px;
         }
-        button:hover {
-            background-color: #45a049;
+        .shortcut {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-left: auto;
         }
     </style>
 </head>
 <body>
-    <h2>Screenshot to OpenAI</h2>
-    <p>Click the button below to capture the current tab and enter a prompt.</p>
-    <button id="captureButton">Capture and Prompt</button>
+    <h2>ScreenHawk</h2>
+    <p>AI-powered screenshot analysis and form assistance</p>
+    
+    <div class="button-group">
+        <button id="captureButton" class="primary-button">
+            <span class="emoji">📸</span>
+            <span>Capture & Analyze</span>
+            <span class="shortcut">Ctrl+Shift+S</span>
+        </button>
+        
+        <button id="magicWandButton" class="secondary-button">
+            <span class="emoji">🪄</span>
+            <span>Magic Wand Mode</span>
+            <span class="shortcut">Ctrl+Shift+Z</span>
+        </button>
+    </div>
+    
+    <p style="margin-top: 16px; font-size: 12px;">
+        <strong>Magic Wand:</strong> Manually select any text field on the page to add AI assistance.
+    </p>
+    
     <script src="popup.js"></script>
 </body>
 </html>
