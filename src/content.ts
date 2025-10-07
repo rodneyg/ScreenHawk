@@ -35,10 +35,13 @@ function showOpenAIResponse(response: string) {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.85);
     padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     z-index: 10000;
   `;
   
@@ -46,10 +49,35 @@ function showOpenAIResponse(response: string) {
     <h2>OpenAI Response</h2>
     <p>${response}</p>
     <br>
-    <button id="closeResponse">Close</button>
+    <button id="closeResponse" style="
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #2d5f2f;
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+      font-weight: 500;
+    ">Close</button>
   `;
   
   document.body.appendChild(responseDialog);
+
+  const closeBtn = document.getElementById('closeResponse');
+  if (closeBtn) {
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+      closeBtn.style.borderColor = 'rgba(76, 175, 80, 0.6)';
+      closeBtn.style.color = '#1e3f20';
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+      closeBtn.style.borderColor = 'rgba(76, 175, 80, 0.4)';
+      closeBtn.style.color = '#2d5f2f';
+    });
+  }
 
   document.getElementById('closeResponse')?.addEventListener('click', () => {
     document.body.removeChild(responseDialog);
@@ -236,10 +264,13 @@ function showPromptDialog() {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.85);
     padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     z-index: 10000;
   `;
   
@@ -247,11 +278,63 @@ function showPromptDialog() {
     <h2>Enter your prompt</h2>
     <textarea id="prompt" rows="4" cols="50" placeholder="Describe what you want to know about the screenshot"></textarea>
     <br><br>
-    <button id="submit">Submit</button>
-    <button id="cancel">Cancel</button>
+    <button id="submit" style="
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #2d5f2f;
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-right: 10px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+      font-weight: 500;
+    ">Submit</button>
+    <button id="cancel" style="
+      background-color: rgba(128, 128, 128, 0.2);
+      color: #4a4a4a;
+      border: 1px solid rgba(128, 128, 128, 0.4);
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+      font-weight: 500;
+    ">Cancel</button>
   `;
   
   document.body.appendChild(dialog);
+
+  const submitBtn = document.getElementById('submit');
+  const cancelBtn = document.getElementById('cancel');
+  
+  if (submitBtn) {
+    submitBtn.addEventListener('mouseenter', () => {
+      submitBtn.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+      submitBtn.style.borderColor = 'rgba(76, 175, 80, 0.6)';
+      submitBtn.style.color = '#1e3f20';
+    });
+    submitBtn.addEventListener('mouseleave', () => {
+      submitBtn.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+      submitBtn.style.borderColor = 'rgba(76, 175, 80, 0.4)';
+      submitBtn.style.color = '#2d5f2f';
+    });
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('mouseenter', () => {
+      cancelBtn.style.backgroundColor = 'rgba(128, 128, 128, 0.3)';
+      cancelBtn.style.borderColor = 'rgba(128, 128, 128, 0.6)';
+      cancelBtn.style.color = '#2a2a2a';
+    });
+    cancelBtn.addEventListener('mouseleave', () => {
+      cancelBtn.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
+      cancelBtn.style.borderColor = 'rgba(128, 128, 128, 0.4)';
+      cancelBtn.style.color = '#4a4a4a';
+    });
+  }
 
   document.getElementById('submit')?.addEventListener('click', () => {
     const promptElement = document.getElementById('prompt') as HTMLTextAreaElement;
