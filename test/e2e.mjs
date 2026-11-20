@@ -29,6 +29,7 @@ await mkdir(evidence, { recursive: true });
 const temp = await mkdtemp(path.join(repo, '.screenhawk-e2e-'));
 let context;
 let video;
+let historyVideo;
 let server;
 let stage = 'start local server';
 const requests = [];
@@ -225,6 +226,14 @@ try {
     assert.deepEqual(await worker.evaluate(async () => Object.keys(await chrome.storage.sync.get())), []);
   }
 
+  async function openHistory() {
+    const popup = await context.newPage();
+    await popup.setViewportSize({ width: 302, height: 380 });
+    await popup.goto(`${base}/popup.html`);
+    await popup.getByRole('heading', { name: 'History' }).waitFor();
+    return popup;
+  }
+
   stage = 'verify missing-key handling and options';
   await capture();
   await selectArea();
@@ -307,6 +316,48 @@ try {
     const image = body.messages[0].content[1].image_url.url;
     assertCrop(image, selection, dpr);
     assertCrop(rejected.messages[0].content[1].image_url.url, selection, dpr);
+
+    stage = 'check persisted history and reopen the saved answer';
+    const { interactionHistory } = await worker.evaluate(() => chrome.storage.local.get('interactionHistory'));
+    assert.equal(interactionHistory.length, 1, 'only the successful request is saved');
+    const [entry] = interactionHistory;
+    assert.deepEqual(Object.keys(entry).sort(), ['answer', 'id', 'prompt', 'thumbnail', 'timestamp']);
+    assert.equal(entry.prompt, question);
+    assert.equal(entry.answer, 'The invoice total is $73.19.');
+    assert.ok(Math.abs(Date.now() - entry.timestamp) < 60000);
+    assert.ok(entry.thumbnail.startsWith('data:image/jpeg;base64,'));
+    assert.ok(entry.thumbnail.length < image.length, 'fixture thumbnail should be smaller than its upload');
+    assert.deepEqual(await worker.evaluate(async () => Object.keys(await chrome.storage.sync.get())), []);
+
+    const history = await openHistory();
+    historyVideo = history.video();
+    const saved = history.locator('#history-list li');
+    await saved.locator('time').waitFor();
+    assert.equal(await saved.locator('time').getAttribute('datetime'), new Date(entry.timestamp).toISOString());
+    const thumbnail = await saved.getByRole('img', { name: 'Selected area' }).evaluate(async (image) => {
+      await image.decode();
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    });
+    assert.ok(thumbnail.width > 0 && thumbnail.width <= 320);
+    assert.ok(thumbnail.height > 0 && thumbnail.height <= 200);
+    await delay(500);
+    await saved.getByText(question, { exact: true }).click();
+    await saved.getByText(entry.answer, { exact: true }).waitFor();
+    await history.screenshot({ scale: 'css', path: path.join(evidence, 'history-answer.png') });
+    await delay(800);
+
+    stage = 'delete an entry and confirm that it stays deleted';
+    await saved.getByRole('button', { name: 'Delete entry' }).click();
+    await history.getByText('No saved interactions.').waitFor();
+    await history.screenshot({ scale: 'css', path: path.join(evidence, 'history-empty.png') });
+    await delay(650);
+    await history.close();
+    const reopened = await openHistory();
+    await reopened.getByText('No saved interactions.').waitFor();
+    assert.equal(await reopened.locator('#history-list li').count(), 0);
+    assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.local.get('interactionHistory')).interactionHistory), []);
+    await reopened.close();
+    console.log('PASS saved success only, local JPEG thumbnail and time, reopened answer, persistent deletion');
   }
 
   if (!real) {
@@ -340,8 +391,10 @@ try {
 } finally {
   try {
     const videoPath = await video?.path();
+    const historyPath = await historyVideo?.path();
     if (context) await context.close();
     if (videoPath) await copyFile(videoPath, path.join(evidence, 'capture-flow.webm'));
+    if (historyPath) await copyFile(historyPath, path.join(evidence, 'history-flow.webm'));
   } finally {
     if (server) await new Promise((resolve) => server.close(resolve));
     await rm(temp, { recursive: true, force: true });
