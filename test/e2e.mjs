@@ -220,10 +220,21 @@ try {
 
   stage = 'verify missing-key handling and options';
   await capture();
+  stage = 'verify Ask visibility and click target';
+  const askButton = control('button[type=submit]');
+  assert.equal(await askButton.count(), 1, 'overlay has one Ask button');
+  assert.equal(await askButton.isVisible(), false, 'Ask is hidden while selecting an area');
   await selectArea();
-  await control('button[type=submit]').click();
+  await askButton.waitFor({ state: 'visible' });
+  assert.equal(await askButton.innerText(), 'Ask');
+  assert.ok(await askButton.isEnabled(), 'Ask is enabled once the area is selected');
+  const askBounds = await askButton.boundingBox();
+  await askButton.click({ position: { x: askBounds.width - 4, y: askBounds.height / 2 } });
+
+  stage = 'verify missing-key handling and options';
   await control('#error').waitFor();
   assert.match(await control('#error').innerText(), /Add your OpenAI API key/);
+  assert.ok(await askButton.isVisible(), 'Ask stays visible so the user can retry');
   assert.equal(requests.length, 0);
   let options = await optionsFromError();
   await options.waitForFunction(() => !document.querySelector('fieldset').disabled);
@@ -277,6 +288,8 @@ try {
   await control('section:not([hidden]) #answer, #error:not([hidden])').waitFor({ timeout: 30000 });
   if (await control('#error').isVisible()) throw new Error(await control('#error').innerText());
   assert.ok((await control('#answer').innerText()).includes('73.19'), 'invoice total missing from answer');
+  assert.equal(await askButton.isVisible(), false, 'Ask is hidden once the answer is shown');
+  console.log('PASS Ask render, right-edge click, and visibility before selection, after an error, and after an answer');
   await page.screenshot({ scale: 'css', path: path.join(evidence, '03-answer.png') });
   await delay(850);
 
