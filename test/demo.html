@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Invoice HAWK-4821</title>
+<style nonce="screenhawk-fixture">
+  :root { font: 18px/1.5 system-ui, sans-serif; background: #eef5f4; color: #102b36; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  header { height: 82px; background: #10343e; color: #e9fbf6; display: flex; align-items: center; gap: 14px; padding: 0 64px; }
+  .mark { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #7edac3; border-radius: 8px; color: #a0efdc; }
+  main { margin: 68px 84px; display: grid; grid-template-columns: minmax(0, 720px) minmax(260px, 1fr); gap: 28px; }
+  .invoice, aside { background: #fff; border: 1px solid #d2e2df; border-radius: 20px; padding: 40px; }
+  h1 { margin: 0 0 20px; font-size: 43px; letter-spacing: -.04em; line-height: 1.15; }
+  h2 { margin: 0 0 14px; font-size: 23px; letter-spacing: -.025em; }
+  p { margin: 0; }
+  .muted { color: #49636e; }
+  .entries { margin: 34px 0 20px; display: grid; gap: 15px; }
+  .line { display: flex; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #e0ebe8; }
+  .total { background: #d5f5eb; color: #123c34; border-radius: 14px; padding: 22px; margin-top: 26px; }
+  .total span { display: block; font-size: 30px; font-weight: 750; letter-spacing: -.035em; }
+  aside { align-self: start; }
+  footer { margin: 0 84px; color: #49636e; font-size: 15px; }
+</style>
+<header><div class="mark" aria-hidden="true">N</div><strong>Northline Studio</strong></header>
+<main>
+  <article class="invoice">
+    <h1>Invoice HAWK-4821</h1>
+    <p class="muted">Studio supplies for the November print run</p>
+    <div class="entries">
+      <div class="line"><span>Paper stock</span><strong>$48.00</strong></div>
+      <div class="line"><span>Ink and shipping</span><strong>$25.19</strong></div>
+    </div>
+    <div class="total"><span>HAWK-4821 invoice total $73.19</span></div>
+  </article>
+  <aside>
+    <h2>Invoice details</h2>
+    <p class="muted">Issued November 20, 2026</p>
+    <p class="muted">Currency USD</p>
+  </aside>
+</main>
+<footer>Northline Studio sample invoice</footer>

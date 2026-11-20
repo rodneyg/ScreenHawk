@@ -1,77 +1,30 @@
 # ScreenHawk
 
-ScreenHawk is a Chrome extension that allows you to capture a screenshot of your active tab, provide context or ask a question about it, and get an analysis from OpenAI's API. The response from OpenAI is then displayed directly on the page.
+ScreenHawk is a Chrome extension for asking questions about an area of the current tab.
 
-## Features
+## Set up
 
-- **Screenshot Capture:** Quickly capture a screenshot of the currently active browser tab.
-- **Area Selection:** Select specific areas of the screenshot using an intuitive click-and-drag interface.
-- **User Input:** A prompt allows you to enter text to provide context or ask a specific question related to the captured screenshot.
-- **OpenAI Integration:** Seamlessly sends the screenshot and your query to the OpenAI API for in-depth analysis.
-- **In-Page Display:** Displays the OpenAI API's response directly on the current webpage, making it easy to view and use.
-- **Keyboard Shortcut:** Use `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac) for quick and easy screenshot capture.
+1. Run `npm ci` and `npm run build`.
+2. Open `chrome://extensions` in Chrome 106 or later. Turn on Developer mode and choose **Load unpacked**. Select the `dist` folder.
+3. Open the ScreenHawk toolbar popup and choose **Settings**.
+4. Paste your own OpenAI API key, then choose **Save settings**. The key needs OpenAI API access with available quota and permission to call your model. ScreenHawk defaults to `gpt-4.1-nano`. You can enter another OpenAI model that accepts image inputs through Chat Completions.
 
-## How to Use
+## Use it
 
-1.  **Activate the Extension:** Click the ScreenHawk extension icon in your Chrome toolbar or use the keyboard shortcut (`Ctrl+Shift+S` or `Cmd+Shift+S`).
-2.  **Capture Screenshot:** The extension will automatically capture a screenshot of your current tab.
-3.  **Select Area:** Click and drag to select a specific area of the screenshot you want to analyze. You can press Escape to cancel the selection.
-4.  **Provide Context/Query:** A dialog box will appear. Enter any context or specific questions you have about the selected area.
-5.  **Submit for Analysis:** Click the "Submit" button.
-6.  **View Results:** The response from the OpenAI API will be displayed in an overlay on the current page.
+Choose **Select area** in the toolbar popup, or press **Cmd+Shift+S** on Mac or **Ctrl+Shift+S** elsewhere. Drag over the part of the visible page you want to share. Enter your question and choose **Ask**. The answer appears on the same page.
 
-## Installation (Development Build)
+Press **Escape** to close the overlay or cancel selection. Chrome restricts extensions on certain pages, including `chrome://` pages and the Chrome Web Store. If the shortcut is unavailable, check its assignment at `chrome://extensions/shortcuts`.
 
-To install ScreenHawk for development:
+## Privacy
 
-1.  **Clone the Repository:**
-    ```bash
-    git clone <repository-url>
-    cd screenhawk
-    ```
-2.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Build the Extension:**
-    ```bash
-    npm run build
-    ```
+Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. OpenAI handles the request under your API account. ScreenHawk does not send data to the developer, run analytics, or keep a history.
 
-4.  **Load Unpacked Extension in Chrome:**
-    *   Open Chrome and navigate to `chrome://extensions`.
-    *   Enable "Developer mode" using the toggle switch in the top right corner.
-    *   Click the "Load unpacked" button.
-    *   Select the `dist` directory from your cloned repository.
+## Test
 
-## Configuration
+```sh
+npm ci
+npx playwright install chromium
+npm test
+```
 
-Before using the extension, you need to configure your OpenAI API key:
-
-1.  Open the file `src/api.ts` in your code editor.
-2.  Locate the following line:
-    ```typescript
-    const OPENAI_API_KEY = '';
-    ```
-3.  Replace `''` with your actual OpenAI API key.
-4.  **Important:** Rebuild the extension (`npm run build`) after changing the API key for the changes to take effect.
-
-## Key Technologies
-
--   **TypeScript:** For robust and maintainable code.
--   **Webpack:** To bundle the JavaScript, TypeScript, and other assets.
--   **Chrome Extension APIs:** To interact with the Chrome browser, capture tabs, and display content.
--   **OpenAI API:** For image analysis and contextual understanding.
-
-## Contributing
-
-Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, please feel free to:
-
-1.  Fork the repository.
-2.  Create a new branch for your feature or fix.
-3.  Make your changes.
-4.  Submit a pull request with a clear description of your changes.
-
-## License
-
-This project is currently not licensed. Please refer to the repository for any updates on licensing.
+The browser test loads the built extension in headless Chromium. The default run sends requests to a local mock and needs no secrets. For the live test, set `OPENAI_API_KEY` in your environment and run `npm run e2e:real`. Set `SCREENHAWK_EVIDENCE` to write evidence to a different folder. Evidence includes screenshots and a video. The live test makes one API request using your API quota.

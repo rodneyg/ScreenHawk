@@ -1,34 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screenshot to OpenAI</title>
-    <style>
-        body {
-            width: 300px;
-            padding: 10px;
-            font-family: Arial, sans-serif;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScreenHawk</title>
+  <link rel="stylesheet" href="ui.css">
+  <script src="popup.js" defer></script>
 </head>
-<body>
-    <h2>Screenshot to OpenAI</h2>
-    <p>Click the button below to capture the current tab and enter a prompt.</p>
-    <button id="captureButton">Capture and Prompt</button>
-    <script src="popup.js"></script>
+<body class="popup">
+  <header class="brand"><img src="icons/icon-32.png" alt="" width="28" height="28"><h1>ScreenHawk</h1></header>
+  <p class="muted">Select part of this page and ask a question about it.</p>
+  <div class="actions">
+    <button id="capture" type="button">Select area</button>
+    <a id="settings" href="options.html" target="_blank">Settings</a>
+  </div>
+  <p id="status" role="status"></p>
 </body>
 </html>

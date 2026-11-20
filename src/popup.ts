@@ -1,58 +1,27 @@
-// popup.ts
+const capture = document.querySelector<HTMLButtonElement>('#capture')!;
+const status = document.querySelector<HTMLElement>('#status')!;
 
-/// <reference types="chrome"/>
-
-document.addEventListener('DOMContentLoaded', () => {
-  const captureButton = document.getElementById('captureButton');
-  if (captureButton) {
-    captureButton.addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const activeTab = tabs[0];
-        if (activeTab && activeTab.id) {
-          chrome.scripting.executeScript(
-            {
-              target: { tabId: activeTab.id },
-              files: ['content.js']
-            },
-            () => {
-              if (chrome.runtime.lastError) {
-                console.error('Script injection failed:', chrome.runtime.lastError);
-                return;
-              }
-              chrome.tabs.sendMessage(activeTab.id!, { action: "prepareCapture" }, (response) => {
-                if (chrome.runtime.lastError) {
-                  console.error('Error:', JSON.stringify(chrome.runtime.lastError));
-                  alert(`Error: ${chrome.runtime.lastError.message}`);
-                } else {
-                  console.log('Message sent successfully');
-                  console.log('Response:', JSON.stringify(response));
-                  window.close();
-                }
-              });
-            }
-          );
-        } else {
-          console.error('No active tab found');
-          alert('No active tab found');
-        }
-      });
-    });
-  } else {
-    console.error('Capture button not found');
+capture.addEventListener('click', async () => {
+  capture.disabled = true;
+  status.textContent = '';
+  try {
+    const result = await chrome.runtime.sendMessage({ action: 'startCapture' });
+    if (result.ok) {
+      window.close();
+      return;
+    }
+    status.textContent = result.message;
+  } catch {
+    status.textContent = 'Could not start ScreenHawk. Try again.';
+  } finally {
+    capture.disabled = false;
   }
 });
 
-chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-  const activeTab = tabs[0];
-  if (activeTab && activeTab.id) {
-    chrome.tabs.sendMessage(activeTab.id, {action: "prepareCapture"}, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error sending message:", chrome.runtime.lastError);
-      } else {
-        console.log("Message sent successfully, response:", response);
-      }
-    });
-  } else {
-    console.error("No active tab found");
-  }
+document.querySelector('#settings')!.addEventListener('click', async (event) => {
+  event.preventDefault();
+  await chrome.runtime.openOptionsPage();
+  window.close();
 });
+
+export {};

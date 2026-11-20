@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScreenHawk Settings</title>
+  <link rel="stylesheet" href="ui.css">
+  <script src="options.js" defer></script>
+</head>
+<body class="options">
+  <main>
+    <header class="brand"><img src="icons/icon-48.png" alt="" width="32" height="32">ScreenHawk</header>
+    <h1>Settings</h1>
+    <p class="muted">Choose the OpenAI key and model that ScreenHawk uses for your questions.</p>
+    <form>
+      <fieldset disabled>
+        <label for="api-key">OpenAI API key</label>
+        <input id="api-key" type="password" autocomplete="off" spellcheck="false" maxlength="1024"
+          aria-describedby="key-help">
+        <small id="key-help">Stored on this device. Clear the field and save to remove the key.</small>
+        <label for="model">Vision model</label>
+        <input id="model" type="text" list="models" autocomplete="off" spellcheck="false" maxlength="128"
+          aria-describedby="model-help">
+        <datalist id="models">
+          <option value="gpt-4.1-nano"></option>
+          <option value="gpt-4o-mini"></option>
+          <option value="gpt-4.1-mini"></option>
+        </datalist>
+        <small id="model-help">Use an OpenAI model that accepts images.</small>
+        <button type="submit">Save settings</button>
+      </fieldset>
+      <p id="status" role="status"></p>
+    </form>
+  </main>
+</body>
+</html>

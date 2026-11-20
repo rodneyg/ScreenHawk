@@ -1,129 +1,96 @@
-// background.ts
+import { askOpenAI } from './api';
 
-import { sendToOpenAI } from './api';
+const restrictedStorage = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+const starting = new Set<number>();
+const pending = new Map<string, AbortController>();
+const captureError = 'ScreenHawk could not capture this tab. Try a regular web page and keep it active.';
 
-console.log("Background script initializing...");
+async function startCapture(tab?: chrome.tabs.Tab) {
+  if (tab?.id === undefined || !tab.active || !/^https?:\/\//.test(tab.url ?? '')) {
+    return { ok: false, message: 'Open a regular web page to start a capture.' };
+  }
+  const { id, windowId } = tab;
+  if (starting.has(id)) return { ok: false, message: 'A capture is already starting.' };
+  starting.add(id);
+  let switchedTabs = false;
+  const watchActiveTab = (event: { windowId: number; tabId: number }) => {
+    if (event.windowId === windowId && event.tabId !== id) switchedTabs = true;
+  };
+  chrome.tabs.onActivated.addListener(watchActiveTab);
+  try {
+    const [page] = await chrome.scripting.executeScript({ target: { tabId: id }, files: ['content.js'] });
+    const destination = { documentId: page.documentId };
+    await chrome.tabs.sendMessage(id, { action: 'resetCapture' }, destination);
+    const [activeBeforeCapture] = await chrome.tabs.query({ active: true, windowId });
+    if (switchedTabs || activeBeforeCapture?.id !== id) {
+      return { ok: false, message: captureError };
+    }
+    const image = await chrome.tabs.captureVisibleTab(windowId, { format: 'png' });
+    const [activeAfterCapture] = await chrome.tabs.query({ active: true, windowId });
+    if (switchedTabs || activeAfterCapture?.id !== id) {
+      return { ok: false, message: captureError };
+    }
+    const result = await chrome.tabs.sendMessage(id, { action: 'startSelection', image }, destination);
+    return result?.ok ? { ok: true } : { ok: false, message: captureError };
+  } catch {
+    return { ok: false, message: captureError };
+  } finally {
+    chrome.tabs.onActivated.removeListener(watchActiveTab);
+    starting.delete(id);
+  }
+}
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("Extension installed or updated");
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command !== 'capture-screenshot') return;
+  void (async () => {
+    const result = await startCapture(tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]);
+    if (!result.ok && tab?.id !== undefined) {
+      await chrome.action.setTitle({ tabId: tab.id, title: result.message ?? captureError });
+    } else if (tab?.id !== undefined) {
+      await chrome.action.setTitle({ tabId: tab.id, title: 'ScreenHawk' });
+    }
+  })().catch(() => {});
 });
 
-chrome.commands.onCommand.addListener((command) => {
-  console.log("Command received in background script:", command);
-  if (command === "capture-screenshot") {
-    console.log("Capture screenshot command received");
-    captureAndSendScreenshot();
-  }
-});
-
-function captureAndSendScreenshot() {
-  console.log("Attempting to capture screenshot...");
-  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    if (chrome.runtime.lastError) {
-      console.error("Error querying tabs:", chrome.runtime.lastError.message);
-      return;
-    }
-    
-    const activeTab = tabs[0];
-    if (!activeTab || typeof activeTab.id !== 'number') {
-      console.error("No active tab found or tab ID is not a number");
-      return;
-    }
-
-    chrome.tabs.captureVisibleTab(
-      activeTab.windowId,
-      {format: 'png'},
-      (dataUrl) => {
-        if (chrome.runtime.lastError) {
-          console.error("Error capturing screenshot:", chrome.runtime.lastError.message);
-          return;
-        }
-        
-        console.log("Screenshot captured successfully");
-        sendMessageToContentScript(activeTab.id ?? 0, dataUrl);
-      }
-    );
-  });
-}
-
-function sendMessageToContentScript(tabId: number, screenshot: string) {
-  console.log(`Attempting to send message to content script in tab ${tabId}...`);
-  chrome.tabs.sendMessage(
-    tabId,
-    { action: "showPromptDialog", screenshot: screenshot },
-    (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error sending message to content script:", chrome.runtime.lastError.message);
-        // Attempt to inject content script if it's not already there
-        injectContentScript(tabId);
-      } else {
-        console.log("Message sent to content script, response:", response);
-      }
-    }
-  );
-}
-
-function injectContentScript(tabId: number) {
-  console.log(`Attempting to inject content script into tab ${tabId}...`);
-  chrome.scripting.executeScript(
-    {
-      target: { tabId: tabId },
-      files: ['content.js']
-    },
-    () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error injecting content script:", chrome.runtime.lastError.message);
-      } else {
-        console.log("Content script injected successfully");
-        // Retry sending the message after injection
-        chrome.tabs.captureVisibleTab(
-          tabId,
-          {format: 'png'},
-          (dataUrl) => {
-            sendMessageToContentScript(tabId, dataUrl);
-          }
-        );
-      }
-    }
-  );
-}
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("Background script received message:", request);
-
-  if (request.action === "sendToOpenAI") {
-    console.log("Background: Received sendToOpenAI request");
-    console.log("Prompt:", request.prompt);
-    console.log("Screenshot data:", request.screenshot ? "Available" : "Not available");
-    console.log("Sending to OpenAI...");
-    sendToOpenAI(request.prompt, request.screenshot)
-      .then(response => {
-        console.log("Received response from OpenAI:", response);
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-          if (tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {action: "openAIResponse", response}, (response) => {
-              if (chrome.runtime.lastError) {
-                console.error("Error sending response to content script:", chrome.runtime.lastError.message);
-              } else {
-                console.log("Response sent to content script");
-              }
-            });
-          } else {
-            console.error("No active tab found");
-          }
-        });
-      })
-      .catch(error => {
-        console.error('Error in sendToOpenAI:', error);
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-          if (tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {action: "displayError", error: error.message});
-          }
-        });
-      });
-  } else {
-    console.warn("Unknown action received:", request.action);
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (sender.id !== chrome.runtime.id) return;
+  if (message?.action === 'startCapture' && sender.url === chrome.runtime.getURL('popup.html')) {
+    chrome.tabs.query({ active: true, currentWindow: true })
+      .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
+    return true;
   }
 
+  if (sender.tab?.id === undefined || sender.frameId !== 0 || !sender.documentId) return;
+
+  if (message?.action === 'openOptions') {
+    chrome.runtime.openOptionsPage().then(() => respond({ ok: true }), () => respond({ ok: false }));
+    return true;
+  }
+
+  const requestId = `${sender.documentId}:${message?.id}`;
+  if (message?.action === 'cancelQuestion') {
+    pending.get(requestId)?.abort();
+    return;
+  }
+  if (message?.action !== 'ask' ||
+      typeof message.id !== 'string' ||
+      typeof message.prompt !== 'string' || !message.prompt.trim() || message.prompt.length > 2000 ||
+      typeof message.image !== 'string' || !message.image.startsWith('data:image/png;base64,')) return;
+
+  const controller = new AbortController();
+  pending.set(requestId, controller);
+  const timeout = setTimeout(() => controller.abort(), 27000);
+  void restrictedStorage
+    .then(() => askOpenAI(message.prompt, message.image, controller.signal))
+    .then(respond, () => respond({
+      ok: false,
+      message: controller.signal.aborted
+        ? 'The request stopped. Try again.'
+        : 'Could not reach OpenAI. Check your connection and try again.',
+    }))
+    .finally(() => {
+      clearTimeout(timeout);
+      pending.delete(requestId);
+    });
   return true;
 });
