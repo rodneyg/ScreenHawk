@@ -18,6 +18,8 @@ const defaultModel = 'gpt-4.1-nano';
 const mockKey = 'screenhawk-local-fixture-token';
 const question = 'What is the invoice total?';
 const receipt = await readFile(new URL('./demo.html', import.meta.url));
+const formPage = await readFile(new URL('./form.html', import.meta.url));
+const draftAnswer = 'I coordinated a studio print run and delivered the work on time.';
 const size = { width: 1280, height: 800 };
 
 if (real && !liveKey?.trim()) {
@@ -49,7 +51,7 @@ try {
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
         'Content-Security-Policy': "default-src 'none'; style-src 'nonce-screenhawk-fixture'",
-      }).end(receipt);
+      }).end(req.url === '/form' ? formPage : receipt);
       return;
     }
     if (real || req.method !== 'POST' || req.url !== '/v1/chat/completions') {
@@ -62,10 +64,12 @@ try {
       const body = JSON.parse(Buffer.concat(chunks));
       requests.push({ body, authorization: req.headers.authorization });
       const rejected = req.headers.authorization !== `Bearer ${mockKey}`;
+      const answer = body.messages[0].content.some(({ type }) => type === 'image_url')
+        ? 'The invoice total is $73.19.' : draftAnswer;
       await delay(350);
       res.writeHead(rejected ? 401 : 200, { 'Content-Type': 'application/json' }).end(JSON.stringify(
         rejected ? { error: { message: 'Rejected by test server' } } :
-          { choices: [{ message: { content: 'The invoice total is $73.19.' } }] },
+          { choices: [{ message: { content: answer } }] },
       ));
     } catch {
       res.writeHead(400).end();
@@ -168,7 +172,12 @@ try {
       await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
     }
 
-    // Make the closed shadow tree readable only on this controlled demo page.
+    await inspectOverlay();
+    await control('#area').waitFor();
+  }
+
+  async function inspectOverlay() {
+    // Make the closed shadow tree readable only on this controlled fixture page.
     const { root } = await pageCDP.send('DOM.getDocument');
     const { nodeId } = await pageCDP.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#screenhawk-overlay' });
     const { node } = await pageCDP.send('DOM.describeNode', { nodeId });
@@ -178,7 +187,6 @@ try {
       functionDeclaration: 'function () { globalThis.screenHawkTestRoot = this; }',
     });
     await pageCDP.send('Runtime.releaseObject', { objectId: object.objectId });
-    await control('#area').waitFor();
   }
 
   async function selectArea(screenshot) {
@@ -313,6 +321,79 @@ try {
   await shortcutsPage.getByRole('heading', { name: 'ScreenHawk', exact: true, level: 2 }).waitFor();
   await shortcutsPage.screenshot({ scale: 'css', path: path.join(evidence, '05-shortcut.png') });
   await shortcutsPage.close();
+
+  if (!real) {
+    stage = 'verify text-only form draft on the original page';
+    await page.goto(`${origin}/form`);
+    const field = page.locator('#experience');
+    const value = 'fixture-current-value';
+    await field.fill(value);
+    await page.evaluate(() => {
+      document.querySelector('form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        document.body.dataset.submitted = 'yes';
+      });
+    });
+
+    async function openDraft() {
+      const sessionId = await clickToolbarPopup('#draft');
+      try {
+        await overlay.waitFor({ state: 'attached' });
+        await inspectOverlay();
+      } finally {
+        await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+      }
+    }
+
+    const label = 'Describe your best job experience';
+    const instructions = 'Describe my studio print run in one sentence.';
+    const requestCount = requests.length;
+    await openDraft();
+    assert.equal(await control('#field-label').inputValue(), label);
+    assert.equal(requests.length, requestCount, 'opening the dialog sent no request');
+    await control('#field-label').clear();
+    assert.equal(await control('#field-label').inputValue(), '');
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    assert.equal(requests.length, requestCount, 'canceling the dialog sent no request');
+
+    await field.focus();
+    await openDraft();
+    await control('#question').evaluate((input, key) => { input.value = key; }, mockKey);
+    await control('button[type=submit]').click();
+    await control('#error').waitFor();
+    assert.match(await control('#error').innerText(), /Remove your OpenAI API key/);
+    assert.equal(requests.length, requestCount, 'an instruction containing the saved key was not sent');
+
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    await field.focus();
+    await openDraft();
+    await control('#question').fill(instructions);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-instructions.png') });
+    await delay(700);
+    await control('button[type=submit]').click();
+    await control('#answer').waitFor();
+    assert.equal(await control('#answer').innerText(), draftAnswer);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-draft.png') });
+    await delay(850);
+
+    assert.equal(requests.length, requestCount + 1);
+    const { body } = requests.at(-1);
+    assert.equal(body.store, false);
+    const [message] = body.messages;
+    assert.equal(message.content.length, 1);
+    assert.equal(message.content[0].type, 'text');
+    const [modelInstruction, contextLine, extra] = message.content[0].text.split('\n');
+    assert.match(modelInstruction, /^Write only a draft/);
+    assert.deepEqual(JSON.parse(contextLine), { fieldLabel: label, instructions });
+    assert.equal(extra, undefined);
+    assert.equal(await field.inputValue(), value);
+    assert.equal(await page.locator('#role').inputValue(), 'fixture-other-field');
+    assert.equal(await page.locator('body').getAttribute('data-submitted'), null);
+    assert.equal(page.url(), `${origin}/form`);
+    console.log('PASS toolbar form draft, editable label, text-only request, key guard, and unchanged website form');
+  }
 
   console.log(`PASS ${real ? 'real OpenAI' : 'local mock'} | ${defaultModel} | 73.19 in the on-page answer | shortcut ${shortcut.shortcut}`);
   if (!real) console.log('PASS missing and rejected key, local settings, custom model, Escape, original tab, cropped PNG');

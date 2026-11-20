@@ -6,10 +6,14 @@ type Answer =
   | { ok: true; answer: string }
   | { ok: false; message: string; showOptions?: boolean };
 
-export async function askOpenAI(prompt: string, image: string, signal: AbortSignal): Promise<Answer> {
+export async function askOpenAI(prompt: string, image: string | undefined, signal: AbortSignal): Promise<Answer> {
   const { apiKey, model } = await readSettings();
   if (!apiKey) {
     return { ok: false, message: 'Add your OpenAI API key in ScreenHawk settings.', showOptions: true };
+  }
+
+  if (!image && prompt.includes(apiKey)) {
+    return { ok: false, message: 'Remove your OpenAI API key from the draft request and try again.' };
   }
 
   const response = await fetch(ENDPOINT, {
@@ -27,7 +31,7 @@ export async function askOpenAI(prompt: string, image: string, signal: AbortSign
         role: 'user',
         content: [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: image } },
+          ...(image ? [{ type: 'image_url', image_url: { url: image } }] : []),
         ],
       }],
     }),
@@ -44,7 +48,10 @@ export async function askOpenAI(prompt: string, image: string, signal: AbortSign
   }
   if (response.status === 400 || response.status === 404) {
     return {
-      ok: false, message: 'OpenAI could not use this request. Check that your model supports image inputs.',
+      ok: false,
+      message: image
+        ? 'OpenAI could not use this request. Check that your model supports image inputs.'
+        : 'OpenAI could not use this request. Check your model in ScreenHawk settings.',
       showOptions: true,
     };
   }
