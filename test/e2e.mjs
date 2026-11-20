@@ -14,7 +14,7 @@ const real = process.argv.includes('--real');
 const { OPENAI_API_KEY: liveKey, ...browserEnv } = process.env;
 const evidence = path.resolve(process.env.SCREENHAWK_EVIDENCE || path.join(repo, 'evidence', real ? 'real' : 'mock'));
 const endpoint = 'https://api.openai.com/v1/chat/completions';
-const defaultModel = 'gpt-4.1-nano';
+const defaultModel = 'gpt-6-luna';
 const mockKey = 'screenhawk-local-fixture-token';
 const question = 'What is the invoice total?';
 const receipt = await readFile(new URL('./demo.html', import.meta.url));
@@ -95,8 +95,15 @@ try {
   });
   context.setDefaultTimeout(7000);
   if (real) {
-    context.on('response', (response) => {
-      if (response.url() === endpoint) console.log(`OpenAI HTTP ${response.status()}`);
+    context.on('response', async (response) => {
+      if (response.url() !== endpoint) return;
+      console.log(`OpenAI HTTP ${response.status()}`);
+      if (response.ok()) return;
+      const body = await response.json().catch(() => null);
+      const code = body?.error?.code;
+      if (['invalid_api_key', 'insufficient_quota', 'model_not_found', 'rate_limit_exceeded'].includes(code)) {
+        console.log(`OpenAI error code: ${code}`);
+      }
     });
   } else {
     await context.route('https://api.openai.com/**', async (route) => {
@@ -245,6 +252,15 @@ try {
   stage = 'save key and default model';
   await saveSettings(options, real ? liveKey.trim() : mockKey, defaultModel);
   await options.screenshot({ scale: 'css', path: path.join(evidence, '04-options.png') });
+  if (!real) {
+    stage = 'verify saved retired models use the new default';
+    for (const model of ['gpt-4.1-nano-2025-04-14', 'gpt-4.1-nano']) {
+      await worker.evaluate((model) => chrome.storage.local.set({ model }), model);
+      await options.reload();
+      await options.waitForFunction(() => !document.querySelector('fieldset').disabled);
+      assert.equal(await options.getByLabel('Vision model').inputValue(), defaultModel);
+    }
+  }
   await options.close();
   await page.bringToFront();
   await page.keyboard.press('Escape');
@@ -315,7 +331,7 @@ try {
   await shortcutsPage.close();
 
   console.log(`PASS ${real ? 'real OpenAI' : 'local mock'} | ${defaultModel} | 73.19 in the on-page answer | shortcut ${shortcut.shortcut}`);
-  if (!real) console.log('PASS missing and rejected key, local settings, custom model, Escape, original tab, cropped PNG');
+  if (!real) console.log('PASS missing and rejected key, local settings, custom model, retired default, Escape, original tab, cropped PNG');
 } catch (error) {
   // Error messages from Playwright protocol calls can contain evaluation arguments.
   const message = String(error.message).split(liveKey || '\u0000').join('[redacted]');
