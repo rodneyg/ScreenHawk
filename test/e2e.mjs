@@ -30,6 +30,7 @@ const temp = await mkdtemp(path.join(repo, '.screenhawk-e2e-'));
 let context;
 let video;
 let historyVideo;
+let viewerVideo;
 let server;
 let stage = 'start local server';
 const requests = [];
@@ -321,7 +322,8 @@ try {
     const { interactionHistory } = await worker.evaluate(() => chrome.storage.local.get('interactionHistory'));
     assert.equal(interactionHistory.length, 1, 'only the successful request is saved');
     const [entry] = interactionHistory;
-    assert.deepEqual(Object.keys(entry).sort(), ['answer', 'id', 'prompt', 'thumbnail', 'timestamp']);
+    assert.equal(entry.url, origin + '/');
+    assert.ok(entry.screenshot.startsWith('data:image/jpeg;base64,'));
     assert.equal(entry.prompt, question);
     assert.equal(entry.answer, 'The invoice total is $73.19.');
     assert.ok(Math.abs(Date.now() - entry.timestamp) < 60000);
@@ -346,8 +348,30 @@ try {
     await history.screenshot({ scale: 'css', path: path.join(evidence, 'history-answer.png') });
     await delay(800);
 
-    stage = 'delete an entry and confirm that it stays deleted';
-    await saved.getByRole('button', { name: 'Delete entry' }).click();
+    stage = 'open the details viewer and verify its saved image and source';
+    const opened = context.waitForEvent('page');
+    await saved.getByRole('link', { name: 'Open details' }).click();
+    const viewer = await opened;
+    viewerVideo = viewer.video();
+    await viewer.getByText(entry.answer, { exact: true }).waitFor();
+    assert.equal(await viewer.getByRole('link', { name: 'Revisit original page' }).getAttribute('href'), entry.url);
+    const screenshot = await viewer.getByRole('img', { name: 'Saved selected area' }).evaluate(async (image) => {
+      await image.decode();
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    });
+    assert.ok(screenshot.width >= thumbnail.width && screenshot.height >= thumbnail.height);
+    await viewer.screenshot({ scale: 'css', path: path.join(evidence, 'history-viewer.png') });
+    await delay(1200);
+    await viewer.getByRole('button', { name: 'Delete entry' }).click();
+    await viewer.getByText('Entry deleted.').waitFor();
+    await delay(700);
+    await viewer.close();
+
+    stage = 'clear history and confirm that it stays deleted';
+    assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.local.get('interactionHistory')).interactionHistory), []);
+    await worker.evaluate((entry) => chrome.storage.local.set({ interactionHistory: [entry] }), entry);
+    history.once('dialog', (dialog) => dialog.accept());
+    await history.getByRole('button', { name: 'Clear history' }).click();
     await history.getByText('No saved interactions.').waitFor();
     await history.screenshot({ scale: 'css', path: path.join(evidence, 'history-empty.png') });
     await delay(650);
@@ -357,7 +381,7 @@ try {
     assert.equal(await reopened.locator('#history-list li').count(), 0);
     assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.local.get('interactionHistory')).interactionHistory), []);
     await reopened.close();
-    console.log('PASS saved success only, local JPEG thumbnail and time, reopened answer, persistent deletion');
+    console.log('PASS local history thumbnail, details viewer, larger JPEG, revisit link, deletion and clear history');
   }
 
   if (!real) {
@@ -392,9 +416,11 @@ try {
   try {
     const videoPath = await video?.path();
     const historyPath = await historyVideo?.path();
+    const viewerPath = await viewerVideo?.path();
     if (context) await context.close();
     if (videoPath) await copyFile(videoPath, path.join(evidence, 'capture-flow.webm'));
     if (historyPath) await copyFile(historyPath, path.join(evidence, 'history-flow.webm'));
+    if (viewerPath) await copyFile(viewerPath, path.join(evidence, 'history-viewer.webm'));
   } finally {
     if (server) await new Promise((resolve) => server.close(resolve));
     await rm(temp, { recursive: true, force: true });

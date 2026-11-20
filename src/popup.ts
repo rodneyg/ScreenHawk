@@ -62,6 +62,7 @@ function renderEntry(entry: HistoryEntry) {
       if (!result?.ok) throw new Error('Delete failed');
       const next = row.nextElementSibling ?? row.previousElementSibling;
       row.remove();
+      clear.disabled = !historyList.children.length;
       historyStatus.textContent = historyList.children.length ? 'Entry deleted.' : 'No saved interactions.';
       (next?.querySelector('summary') ?? capture).focus();
     } catch {
@@ -69,13 +70,34 @@ function renderEntry(entry: HistoryEntry) {
       remove.disabled = false;
     }
   });
-  details.append(summary, answer, remove);
+  const viewer = document.createElement('a');
+  viewer.href = `interaction-viewer.html?id=${encodeURIComponent(entry.id)}`;
+  viewer.target = '_blank';
+  viewer.textContent = 'Open details';
+  details.append(summary, answer, viewer, remove);
   row.append(preview, details);
   return row;
 }
 
+const clear = document.querySelector<HTMLButtonElement>('#clear-history')!;
+clear.addEventListener('click', async () => {
+  if (!confirm('Delete all saved interactions?')) return;
+  clear.disabled = true;
+  try {
+    const result = await chrome.runtime.sendMessage({ action: 'clearHistory' });
+    if (!result?.ok) throw new Error('Clear failed');
+    historyList.replaceChildren();
+    historyStatus.textContent = 'No saved interactions.';
+    capture.focus();
+  } catch {
+    historyStatus.textContent = 'Could not clear history. Try again.';
+    clear.disabled = false;
+  }
+});
+
 void readHistory().then((entries) => {
   historyList.replaceChildren(...entries.map(renderEntry));
+  clear.disabled = !entries.length;
   historyStatus.textContent = entries.length ? '' : 'No saved interactions.';
 }).catch(() => {
   historyStatus.textContent = 'Could not load history.';

@@ -101,7 +101,7 @@ async function selectArea(snapshot: string) {
         <h2>Ask about this area</h2>
         <label for="question" class="muted">Question</label>
         <textarea id="question" rows="3" maxlength="2000" required></textarea>
-        <small>Ask sends your selection and question to OpenAI. Successful answers are saved with a thumbnail in local history.</small>
+        <small>Ask sends your selection and question to OpenAI. Successful answers are saved with a compressed image and source page information in local history.</small>
         <p id="error" role="alert" hidden></p>
         <a id="options" href="#" hidden>Open ScreenHawk settings</a>
         <div class="actions">
