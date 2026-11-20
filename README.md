@@ -13,11 +13,13 @@ ScreenHawk is a Chrome extension for asking questions about an area of the curre
 
 Choose **Select area** in the toolbar popup, or press **Cmd+Shift+S** on Mac or **Ctrl+Shift+S** elsewhere. Drag over the part of the visible page you want to share. Enter your question and choose **Ask**. The answer appears on the same page.
 
+To draft text for a form, click an editable text area and choose **Draft for field** in the toolbar popup. Review or clear the field label, enter what you want to say, and choose **Generate draft**. Copy the draft into the form when you are ready.
+
 Press **Escape** to close the overlay or cancel selection. Chrome restricts extensions on certain pages, including `chrome://` pages and the Chrome Web Store. If the shortcut is unavailable, check its assignment at `chrome://extensions/shortcuts`.
 
 ## Privacy
 
-Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. OpenAI handles the request under your API account. ScreenHawk does not send data to the developer, run analytics, or keep a history.
+Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It does not read the form’s entered values or submit the form. OpenAI handles each request under your API account. ScreenHawk does not send data to the developer, run analytics, or keep a history.
 
 ## Test
 

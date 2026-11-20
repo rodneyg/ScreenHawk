@@ -40,6 +40,17 @@ async function startCapture(tab?: chrome.tabs.Tab) {
   }
 }
 
+const formError = 'Click an editable text area on the page, then choose Draft for field again.';
+
+async function startFormDraft(tab?: chrome.tabs.Tab) {
+  if (tab?.id === undefined || !tab.active || !/^https?:\/\//.test(tab.url ?? '')) {
+    return { ok: false, message: formError };
+  }
+  const [page] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+  const result = await chrome.tabs.sendMessage(tab.id, { action: 'startFormDraft' }, { documentId: page.documentId });
+  return result?.ok ? { ok: true } : { ok: false, message: formError };
+}
+
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command !== 'capture-screenshot') return;
   void (async () => {
@@ -54,10 +65,17 @@ chrome.commands.onCommand.addListener((command, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return;
-  if (message?.action === 'startCapture' && sender.url === chrome.runtime.getURL('popup.html')) {
-    chrome.tabs.query({ active: true, currentWindow: true })
-      .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
-    return true;
+  if (sender.url === chrome.runtime.getURL('popup.html')) {
+    if (message?.action === 'startCapture') {
+      chrome.tabs.query({ active: true, currentWindow: true })
+        .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
+      return true;
+    }
+    if (message?.action === 'startFormDraft') {
+      chrome.tabs.query({ active: true, currentWindow: true })
+        .then(([tab]) => startFormDraft(tab)).then(respond, () => respond({ ok: false, message: formError }));
+      return true;
+    }
   }
 
   if (sender.tab?.id === undefined || sender.frameId !== 0 || !sender.documentId) return;
@@ -72,16 +90,26 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     pending.get(requestId)?.abort();
     return;
   }
-  if (message?.action !== 'ask' ||
-      typeof message.id !== 'string' ||
-      typeof message.prompt !== 'string' || !message.prompt.trim() || message.prompt.length > 2000 ||
-      typeof message.image !== 'string' || !message.image.startsWith('data:image/png;base64,')) return;
+  if (typeof message?.id !== 'string' ||
+      typeof message.prompt !== 'string' || !message.prompt.trim() || message.prompt.length > 2000) return;
+  let image: string | undefined;
+  let prompt = message.prompt;
+  if (message.action === 'ask') {
+    if (typeof message.image !== 'string' || !message.image.startsWith('data:image/png;base64,')) return;
+    image = message.image;
+  } else if (message.action === 'draft') {
+    if (typeof message.fieldLabel !== 'string' || message.fieldLabel.length > 200) return;
+    const context = JSON.stringify({ fieldLabel: message.fieldLabel, instructions: message.prompt });
+    prompt = `Write only a draft for the user's text area. Use the field label as context.\n${context}`;
+  } else {
+    return;
+  }
 
   const controller = new AbortController();
   pending.set(requestId, controller);
   const timeout = setTimeout(() => controller.abort(), 27000);
   void restrictedStorage
-    .then(() => askOpenAI(message.prompt, message.image, controller.signal))
+    .then(() => askOpenAI(prompt, image, controller.signal))
     .then(respond, () => respond({
       ok: false,
       message: controller.signal.aborted
