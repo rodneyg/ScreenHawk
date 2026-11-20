@@ -51,6 +51,7 @@ figcaption { padding: .6rem .2rem 0; color: var(--muted); font-size: .92rem; }
 .steps li::before { content: counter(steps); display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--dark); color: white; margin-bottom: 1rem; font-weight: 750; }
 .steps p { margin-top: .55rem; color: var(--muted); }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2.5rem 4rem; align-items: center; }
+.screenshots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.15rem; margin-top: 1.55rem; }
 .copy p, .copy h3 { margin-top: 1rem; }
 .copy p { color: var(--muted); }
 .faq { max-width: 48rem; }
@@ -71,7 +72,7 @@ code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-
 .footer { background: #eaf0e6; border-top: 1px solid var(--line); padding-block: 1.55rem; }
 .footer p { color: var(--muted); }
 @media (max-width: 49rem) {
-  .hero, .split { grid-template-columns: minmax(0, 1fr); }
+  .hero, .split, .screenshots { grid-template-columns: minmax(0, 1fr); }
   .hero h1 { max-width: 13ch; }
   .steps { grid-template-columns: minmax(0, 1fr); }
 }

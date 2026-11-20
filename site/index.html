@@ -47,7 +47,7 @@
       <figure class="shot">
         <div class="window">
           <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
-          <img src="/assets/select.png" width="900" height="510" alt="ScreenHawk selection box around the Cedar Ridge trail status on an example page" fetchpriority="high">
+          <img src="/assets/screenshots/01-area-select.png" width="1280" height="800" alt="ScreenHawk selection box on an example page" fetchpriority="high">
         </div>
         <figcaption>Drag a box around the part of the page you want to ask about.</figcaption>
       </figure>
@@ -68,17 +68,37 @@
       <div class="wrap split">
         <div class="copy">
           <h2>Bring your own OpenAI key</h2>
-          <p>Save your OpenAI API key in ScreenHawk’s options. The key stays in local extension storage. Your browser uses it to send the selected image and your question directly to OpenAI when you submit.</p>
+          <p>Save your OpenAI API key in ScreenHawk’s options. The key stays in local extension storage. The default model is GPT-4.1 nano. Your browser uses it to send the selected image and your question directly to OpenAI when you submit.</p>
           <h3>What does it cost?</h3>
-          <p>You pay OpenAI directly, usually fractions of a cent for a small selection and short question. The model, image size, and answer length affect the price. See <a href="https://openai.com/api/pricing/">OpenAI API pricing</a>.</p>
+          <p>You pay OpenAI directly, based on your API usage. The model, image size, and answer length affect the price. See <a href="https://openai.com/api/pricing/">OpenAI API pricing</a>.</p>
         </div>
         <figure class="shot">
           <div class="window">
             <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
-            <img src="/assets/question.png" width="900" height="510" alt="ScreenHawk question dialog containing the question Which of these trails is closed?" loading="lazy">
+            <img src="/assets/screenshots/02-prompt.png" width="1280" height="800" alt="ScreenHawk question dialog over the selected area" loading="lazy">
           </div>
           <figcaption>Type your question after making a selection.</figcaption>
         </figure>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="extension-views">
+      <div class="wrap">
+        <h2 id="extension-views">Answers and settings</h2>
+        <div class="screenshots">
+          <figure class="shot">
+            <div class="window"><img src="/assets/screenshots/03-answer.png" width="1280" height="800" alt="An answer displayed over the page where the question started" loading="lazy"></div>
+            <figcaption>Read the answer on the same page.</figcaption>
+          </figure>
+          <figure class="shot">
+            <div class="window"><img src="/assets/screenshots/04-options.png" width="1280" height="800" alt="ScreenHawk options with a masked key field and a model field" loading="lazy"></div>
+            <figcaption>Set your API key and model.</figcaption>
+          </figure>
+          <figure class="shot">
+            <div class="window"><img src="/assets/screenshots/05-shortcut.png" width="1280" height="800" alt="Chrome’s extension shortcuts page showing the ScreenHawk capture command" loading="lazy"></div>
+            <figcaption>Set a capture shortcut in Chrome.</figcaption>
+          </figure>
+        </div>
       </div>
     </section>
 

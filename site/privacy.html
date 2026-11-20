@@ -38,19 +38,18 @@
     <p>Rodney Gainous Jr publishes ScreenHawk. ScreenHawk has no account, developer server, or analytics. This website uses no analytics or cookies.</p>
 
     <h2>On your device</h2>
-    <p>ScreenHawk stores your OpenAI API key only on this device in <code>chrome.storage.local</code>. Your browser captures the visible tab and crops the image to the area you select.</p>
+    <p>ScreenHawk stores your own OpenAI API key and model choice on this device in <code>chrome.storage.local</code>. The default model is <code>gpt-4.1-nano</code>. When you start a capture, Chrome captures the visible tab. ScreenHawk crops the image to the area you select on your device.</p>
 
     <h2>What OpenAI receives</h2>
-    <p>When you submit a question, your browser sends the selected screenshot area and your question directly to <code>api.openai.com</code> using your own API key. The response appears on your tab. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
+    <p>When you submit, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. The request includes your chosen model and uses your own API key for authorization. The answer appears only on the page where you started the capture. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
     <p>Rodney Gainous Jr does not receive, sell, or share your key, screenshots, or questions.</p>
 
     <h2>Chrome permissions</h2>
     <ul id="permissions">
       <li><strong><code>activeTab</code></strong> gives ScreenHawk temporary access to the tab where you start a capture.</li>
-      <li><strong><code>scripting</code></strong> lets ScreenHawk open the selection and question interface on a tab.</li>
-      <li><strong><code>tabs</code></strong> lets ScreenHawk find the active tab for capture and show the answer there.</li>
-      <li><strong><code>storage</code></strong> saves your OpenAI API key locally.</li>
-      <li><strong><code>&lt;all_urls&gt;</code></strong> lets the selection interface run on regular web pages and allows requests to OpenAI.</li>
+      <li><strong><code>scripting</code></strong> loads the selection, question, and answer interface on demand after you start a capture.</li>
+      <li><strong><code>storage</code></strong> saves your OpenAI API key and model choice on this device.</li>
+      <li><strong><code>https://api.openai.com/*</code></strong> lets ScreenHawk send your submitted crop and question directly to OpenAI.</li>
     </ul>
 
     <h2>Remove your data</h2>
