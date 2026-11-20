@@ -6,7 +6,7 @@ prs: 11, 10, 12
 ---
 ## New
 - Select part of a Chrome tab, ask a question, and read an OpenAI answer on the same page.
-- Save your own OpenAI API key and model in the extension options. The default model is GPT-4.1 nano.
+- Save your own OpenAI API key and model in the extension options. ScreenHawk 1.0.0 used GPT-4.1 nano by default.
 - A product site with a homepage, privacy policy, support page, changelog, and terms.
 
 ## Improved
