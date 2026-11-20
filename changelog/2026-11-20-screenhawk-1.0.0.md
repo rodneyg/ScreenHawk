@@ -2,7 +2,7 @@
 date: 2026-11-20
 title: ScreenHawk 1.0.0
 status: published
-prs: 11, 10
+prs: 11, 10, 12
 ---
 ## New
 - Select part of a Chrome tab, ask a question, and read an OpenAI answer on the same page.

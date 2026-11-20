@@ -31,5 +31,5 @@ The browser test loads the built extension in headless Chromium. The default run
 
 ## Changelog updates
 
-`changelog/*.md` is the source of truth for the public `/changelog` page. Entries use date, title, status, and prs frontmatter, plus New, Improved, and Fixed bullet groups. Run `npm run changelog:build` after you set an entry to `status: published`. Run `npm run changelog:add` with the GitHub CLI to draft merged pull requests since the latest published date. On merges to main, the Draft changelog Action opens a draft pull request for review.
+`changelog/*.md` is the source of truth for the public `/changelog` page. Entries use date, title, status, and prs frontmatter, plus New, Improved, and Fixed bullet groups. Run `npm run changelog:build` after you set an entry to `status: published`. Run `npm run changelog:add` with the GitHub CLI to draft merged pull requests since the latest published date. For eligible merges to main, the Draft changelog workflow creates a draft entry and pushes a `changelog/pr-<number>` branch. It then tries to open a draft pull request. GitHub Actions currently lacks permission to open those pull requests in this repository. If a draft branch exists, open a pull request from it and review the entry before publishing.
 
