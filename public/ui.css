@@ -1,0 +1,26 @@
+:root { color-scheme: dark; font: 16px/1.55 system-ui, sans-serif; color: #eef6f7; background: #0a141d; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+body.options { display: flow-root; min-height: 100vh; background: radial-gradient(ellipse at 50% 0, #1a3843, #0a141d 74%); }
+main { width: min(100% - 32px, 560px); margin: clamp(24px, 10vh, 88px) auto; }
+.popup { width: 302px; padding: 18px; background: #101b24; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; }
+h1 { font-size: 28px; line-height: 1.2; margin: 18px 0 8px; }
+.popup h1 { font-size: 18px; margin: 0; }
+p { margin: 0 0 14px; }
+.muted, small, kbd { color: #aac2cc; }
+.popup p { font-size: 14px; margin-top: 13px; }
+form { margin-top: 26px; }
+fieldset { display: grid; gap: 8px; border: 1px solid #35515f; border-radius: 18px; margin: 0; padding: 24px; background: #101b24; }
+label { font-weight: 620; }
+input { width: 100%; font: inherit; color: inherit; background: #0a141d; border: 1px solid #587780; border-radius: 8px; padding: 10px 12px; }
+small { margin-bottom: 10px; }
+button, a { font: inherit; font-weight: 650; color: #a6f6e0; }
+button { background: #77f1cf; color: #0b2921; border: none; border-radius: 8px; padding: 9px 13px; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+:focus-visible { outline: 2px solid #77f1cf; outline-offset: 3px; }
+.actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+fieldset button { justify-self: start; }
+[role=status] { margin: 0; color: #b5f4e2; }
+[role=status]:empty { display: none; }
+.popup [role=status], .options [role=status] { margin-top: 10px; }

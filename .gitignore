@@ -45,3 +45,7 @@ ehthumbs.db
 Thumbs.db
 .aider*
 main.py
+
+# Browser verification evidence and temporary profiles
+evidence/
+.screenhawk-e2e-*/
