@@ -81,3 +81,11 @@ code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-
   .bar-inner { gap: .3rem 1rem; }
   .nav { gap: .5rem .8rem; }
 }
+
+.changelog { margin-top: 2rem; }
+.changelog article { border-top: 1px solid var(--line); padding: 1.6rem 0; }
+.changelog article:first-child { border-top: 0; padding-top: 0; }
+.changelog time { display: block; color: var(--muted); font-size: .92rem; margin-bottom: .55rem; }
+.changelog h2 { margin-top: 0; }
+.changelog h3 { margin-top: 1.15rem; font-size: 1.05rem; }
+.changelog ul { margin: .45rem 0 0; }
