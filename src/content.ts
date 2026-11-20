@@ -86,10 +86,14 @@ async function selectArea(snapshot: string) {
       button { cursor: pointer; background: transparent; border: 0; border-radius: 8px; padding: 8px 13px; }
       button.primary { background: #77f1cf; color: #0b2921; }
       form button.primary {
-        background: rgba(119, 241, 207, .15); color: #a6f6e0;
-        box-shadow: inset 0 0 0 1px rgba(119, 241, 207, .5);
+        min-width: 24px; min-height: 24px; padding: 7px 12px;
+        background: rgba(119, 241, 207, .14); color: #a6f6e0;
+        border: 1px solid rgba(119, 241, 207, .34); backdrop-filter: blur(8px);
       }
-      form button.primary:enabled:hover { background: rgba(119, 241, 207, .24); }
+      form button.primary:enabled { opacity: .78; }
+      form button.primary:enabled:is(:hover, :focus-visible) {
+        background: rgba(119, 241, 207, .24); opacity: 1;
+      }
       button:disabled { opacity: .6; cursor: wait; }
       :focus-visible { outline: 2px solid #77f1cf; outline-offset: 3px; }
       #answer { white-space: pre-wrap; overflow-wrap: anywhere; }

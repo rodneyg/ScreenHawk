@@ -281,14 +281,31 @@ try {
 
   stage = 'verify the glass Ask button and submit';
   const ask = control('button[type=submit]');
-  const askBackground = () => ask.evaluate((button) => getComputedStyle(button).backgroundColor);
-  assert.equal(await askBackground(), 'rgba(119, 241, 207, 0.15)', 'Ask uses a translucent fill');
+  const askAppearance = () => ask.evaluate((button) => {
+    const { backgroundColor, backdropFilter, borderTopColor, opacity } = getComputedStyle(button);
+    return { backgroundColor, backdropFilter, borderTopColor, opacity };
+  });
+  const idle = {
+    backgroundColor: 'rgba(119, 241, 207, 0.14)',
+    backdropFilter: 'blur(8px)',
+    borderTopColor: 'rgba(119, 241, 207, 0.34)',
+    opacity: '0.78',
+  };
+  const active = { ...idle, backgroundColor: 'rgba(119, 241, 207, 0.24)', opacity: '1' };
+  assert.deepEqual(await askAppearance(), idle, 'Ask uses dimmed, translucent glass at rest');
+  const { height, width } = await ask.boundingBox();
+  assert.ok(width >= 24 && height >= 24, 'Ask has at least a 24 by 24 CSS pixel hit target');
   await control('#cancel').focus();
   await page.keyboard.press('Tab');
-  assert.ok(await ask.evaluate((button) => button.matches(':focus-visible')), 'Ask has visible keyboard focus');
+  assert.ok(await ask.evaluate((button) => {
+    const { outlineStyle, outlineWidth } = getComputedStyle(button);
+    return button.matches(':focus-visible') && outlineStyle === 'solid' && outlineWidth === '2px';
+  }), 'Ask has a visible outline when reached by keyboard');
+  assert.deepEqual(await askAppearance(), active, 'keyboard focus restores full opacity');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await askAppearance(), idle, 'Ask dims when keyboard focus leaves');
   await ask.hover();
-  assert.equal(await askBackground(), 'rgba(119, 241, 207, 0.24)', 'Ask stays translucent on hover');
-  const { height } = await ask.boundingBox();
+  assert.deepEqual(await askAppearance(), active, 'hover restores full opacity and stays translucent');
   await ask.click({ position: { x: 4, y: height / 2 } });
   if (!real) {
     // The answer must follow the initiating document, even if another tab becomes active.
