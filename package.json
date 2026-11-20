@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:changelog && npm run build && node test/e2e.mjs",
+    "test": "npm run test:changelog && npm run build && node --test test/*.test.cjs && node test/e2e.mjs",
     "build": "webpack --mode production",
     "e2e:real": "npm run build && node test/e2e.mjs --real",
     "changelog:build": "node scripts/changelog.js build",
