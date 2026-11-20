@@ -9,6 +9,10 @@ ScreenHawk is a Chrome extension for asking questions about an area of the curre
 3. Open the ScreenHawk toolbar popup and choose **Settings**.
 4. Paste your own OpenAI API key, then choose **Save settings**. The key needs OpenAI API access with available quota and permission to call your model. ScreenHawk defaults to `gpt-6-luna`. You can enter another OpenAI model that accepts image inputs through Chat Completions.
 
+## Build a ZIP for manual installation
+
+Run `npm run package:zip` after `npm ci` with the `zip` command on your PATH. Extract `build/screenhawk-unpacked.zip` and select the extracted folder containing `manifest.json` when you choose **Load unpacked**.
+
 ## Use it
 
 Choose **Select area** in the toolbar popup, or press **Cmd+Shift+S** on Mac or **Ctrl+Shift+S** elsewhere. Drag over the part of the visible page you want to share. Enter your question and choose **Ask**. The answer appears on the same page.
