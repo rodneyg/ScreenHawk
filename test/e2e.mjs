@@ -262,7 +262,18 @@ try {
   await selectArea(path.join(evidence, '01-area-select.png'));
   await page.screenshot({ scale: 'css', path: path.join(evidence, '02-prompt.png') });
   await delay(550);
-  await control('button[type=submit]').click();
+
+  stage = 'verify the glass Ask button and submit';
+  const ask = control('button[type=submit]');
+  const askBackground = () => ask.evaluate((button) => getComputedStyle(button).backgroundColor);
+  assert.equal(await askBackground(), 'rgba(119, 241, 207, 0.15)', 'Ask uses a translucent fill');
+  await control('#cancel').focus();
+  await page.keyboard.press('Tab');
+  assert.ok(await ask.evaluate((button) => button.matches(':focus-visible')), 'Ask has visible keyboard focus');
+  await ask.hover();
+  assert.equal(await askBackground(), 'rgba(119, 241, 207, 0.24)', 'Ask stays translucent on hover');
+  const { height } = await ask.boundingBox();
+  await ask.click({ position: { x: 4, y: height / 2 } });
   if (!real) {
     // The answer must follow the initiating document, even if another tab becomes active.
     const anotherTab = await context.newPage();

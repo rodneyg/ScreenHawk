@@ -85,6 +85,11 @@ async function selectArea(snapshot: string) {
       button, a { font: inherit; font-weight: 600; color: #a6f6e0; }
       button { cursor: pointer; background: transparent; border: 0; border-radius: 8px; padding: 8px 13px; }
       button.primary { background: #77f1cf; color: #0b2921; }
+      form button.primary {
+        background: rgba(119, 241, 207, .15); color: #a6f6e0;
+        box-shadow: inset 0 0 0 1px rgba(119, 241, 207, .5);
+      }
+      form button.primary:enabled:hover { background: rgba(119, 241, 207, .24); }
       button:disabled { opacity: .6; cursor: wait; }
       :focus-visible { outline: 2px solid #77f1cf; outline-offset: 3px; }
       #answer { white-space: pre-wrap; overflow-wrap: anywhere; }
