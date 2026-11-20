@@ -5,6 +5,7 @@
   "scripts": {
     "test": "npm run test:changelog && npm run build && node test/e2e.mjs",
     "build": "webpack --mode production",
+    "pretest": "node --test test/onboarding.test.cjs",
     "e2e:real": "npm run build && node test/e2e.mjs --real",
     "changelog:build": "node scripts/changelog.js build",
     "changelog:add": "node scripts/changelog.js add",
