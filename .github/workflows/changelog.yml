@@ -1,0 +1,38 @@
+name: Draft changelog
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  draft:
+    if: github.event.pull_request.merged == true && !startsWith(github.event.pull_request.head.ref, 'changelog/') && github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Draft a changelog entry for the merged pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          node scripts/changelog.js add
+          if git diff --quiet && test -z "$(git ls-files --others --exclude-standard -- changelog)"; then
+            echo "No new draft changelog entry"
+            exit 0
+          fi
+          branch="changelog/pr-${PR_NUMBER}"
+          git checkout -B "$branch"
+          git add changelog
+          git commit -m "Draft changelog for PR #${PR_NUMBER}"
+          git push origin "$branch"
+          gh pr create --draft --base main --head "$branch" --title "Changelog for PR #${PR_NUMBER}" --body-file .github/changelog-draft-pr-body.md

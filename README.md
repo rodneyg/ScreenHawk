@@ -28,3 +28,8 @@ npm test
 ```
 
 The browser test loads the built extension in headless Chromium. The default run sends requests to a local mock and needs no secrets. For the live test, set `OPENAI_API_KEY` in your environment and run `npm run e2e:real`. Set `SCREENHAWK_EVIDENCE` to write evidence to a different folder. Evidence includes screenshots and a video. The live test makes one API request using your API quota.
+
+## Changelog updates
+
+`changelog/*.md` is the source of truth for the public `/changelog` page. Entries use date, title, status, and prs frontmatter, plus New, Improved, and Fixed bullet groups. Run `npm run changelog:build` after you set an entry to `status: published`. Run `npm run changelog:add` with the GitHub CLI to draft merged pull requests since the latest published date. On merges to main, the Draft changelog Action opens a draft pull request for review.
+
