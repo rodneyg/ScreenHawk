@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ScreenHawk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Select part of a page and ask a question about it.",
   "author": "Rodney Gainous Jr",
   "minimum_chrome_version": "106",
