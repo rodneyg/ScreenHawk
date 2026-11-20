@@ -1,6 +1,6 @@
 type Point = { x: number; y: number };
 type Answer =
-  | { ok: true; answer: string }
+  | { ok: true; answer: string; historySaveFailed?: boolean }
   | { ok: false; message: string; showOptions?: boolean };
 
 const global = globalThis as typeof globalThis & { screenHawkInstalled?: boolean };
@@ -132,7 +132,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
         </div>
         <label id="question-label" for="question" class="muted">Question</label>
         <textarea id="question" rows="3" maxlength="2000" required></textarea>
-        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask.</small>
+        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask. Successful answers are saved with a thumbnail in local history.</small>
         <p id="error" role="alert" hidden></p>
         <a id="options" href="#" hidden>Open ScreenHawk settings</a>
         <div class="actions">
@@ -143,6 +143,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
       <section hidden>
         <h2 id="answer-title" tabindex="-1">Answer</h2>
         <p id="answer"></p>
+        <p id="history-note" class="muted" role="status" hidden>ScreenHawk could not save this answer to history.</p>
         <div class="actions"><button class="primary" id="close">Close</button></div>
       </section>
     </dialog>`;
@@ -273,6 +274,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
       if (result.ok) {
         crop = undefined;
         root.querySelector('#answer')!.textContent = result.answer;
+        root.querySelector<HTMLElement>('#history-note')!.hidden = !result.historySaveFailed;
         form.hidden = true;
         answerPanel.hidden = false;
         dialog.setAttribute('aria-label', drafting ? 'Draft' : 'Answer');

@@ -26,3 +26,15 @@ fieldset button { justify-self: start; }
 [role=status] { margin: 0; color: #b5f4e2; }
 [role=status]:empty { display: none; }
 .popup [role=status], .options [role=status] { margin-top: 10px; }
+.history { border-top: 1px solid #35515f; margin-top: 16px; padding-top: 12px; }
+.history h2 { font-size: 16px; margin: 0; }
+#history-list { list-style: none; margin: 0; padding: 0; max-height: 370px; overflow-y: auto; }
+#history-list li { padding: 9px 4px; border-bottom: 1px solid #35515f; }
+#history-list summary { cursor: pointer; font-size: 14px; overflow-wrap: anywhere; }
+.history-prompt { display: inline-block; max-width: calc(100% - 22px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+details[open] .history-prompt { white-space: pre-wrap; }
+.history-preview { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.history-preview img { width: 56px; height: 36px; object-fit: contain; background: #0a141d; border-radius: 4px; }
+.history-preview time { font-size: 12px; }
+.history-answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+.history-delete { background: transparent; color: #b5f4e2; padding: 4px 0; font-size: 13px; }

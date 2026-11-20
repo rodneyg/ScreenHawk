@@ -1,4 +1,5 @@
 import { askOpenAI } from './api';
+import { deleteInteraction, saveInteraction } from './history';
 
 const restrictedStorage = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 const starting = new Set<number>();
@@ -76,6 +77,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         .then(([tab]) => startFormDraft(tab)).then(respond, () => respond({ ok: false, message: formError }));
       return true;
     }
+    if (message?.action === 'deleteInteraction' && typeof message.id === 'string') {
+      restrictedStorage.then(() => deleteInteraction(message.id))
+        .then(() => respond({ ok: true }), () => respond({ ok: false }));
+      return true;
+    }
   }
 
   if (sender.tab?.id === undefined || sender.frameId !== 0 || !sender.documentId) return;
@@ -110,6 +116,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const timeout = setTimeout(() => controller.abort(), 27000);
   void restrictedStorage
     .then(() => askOpenAI(prompt, image, controller.signal))
+    .then(async (result) => {
+      if (image && result.ok && !controller.signal.aborted) {
+        try {
+          await saveInteraction(prompt, result.answer, image, controller.signal);
+        } catch {
+          return { ...result, historySaveFailed: true };
+        }
+      }
+      return result;
+    })
     .then(respond, () => respond({
       ok: false,
       message: controller.signal.aborted
