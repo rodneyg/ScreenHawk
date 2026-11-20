@@ -17,6 +17,8 @@ To draft text for a form, click an editable text area and choose **Draft for fie
 
 Press **Escape** to close the overlay or cancel selection. Chrome restricts extensions on certain pages, including `chrome://` pages and the Chrome Web Store. If the shortcut is unavailable, check its assignment at `chrome://extensions/shortcuts`.
 
+Choose **Choose field** in the toolbar popup or press **Ctrl+Shift+Z** (**Command+Shift+Z** on Mac). Select a highlighted text field and choose **Help me write**. Review the field label, enter your instructions, and choose **Generate draft**. Choose **Use draft** to insert the text. ScreenHawk leaves submission to you.
+
 ## Privacy
 
 Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It does not read the form’s entered values or submit the form. OpenAI handles each request under your API account. ScreenHawk does not send data to the developer, run analytics, or keep a history.

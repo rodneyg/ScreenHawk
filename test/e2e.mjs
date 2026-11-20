@@ -183,10 +183,10 @@ try {
     await control('#area').waitFor();
   }
 
-  async function inspectOverlay() {
+  async function inspectOverlay(selector = '#screenhawk-overlay') {
     // Make the closed shadow tree readable only on this controlled fixture page.
     const { root } = await pageCDP.send('DOM.getDocument');
-    const { nodeId } = await pageCDP.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#screenhawk-overlay' });
+    const { nodeId } = await pageCDP.send('DOM.querySelector', { nodeId: root.nodeId, selector });
     const { node } = await pageCDP.send('DOM.describeNode', { nodeId });
     const { object } = await pageCDP.send('DOM.resolveNode', { backendNodeId: node.shadowRoots[0].backendNodeId });
     await pageCDP.send('Runtime.callFunctionOn', {
@@ -409,6 +409,42 @@ try {
     assert.equal(await page.locator('body').getAttribute('data-submitted'), null);
     assert.equal(page.url(), `${origin}/form`);
     console.log('PASS toolbar form draft, editable label, text-only request, key guard, and unchanged website form');
+
+    stage = 'verify manual field selection and inline insertion';
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    const wand = page.locator('#screenhawk-field-helper');
+    const sessionId = await clickToolbarPopup('#wand');
+    try {
+      await wand.waitFor({ state: 'attached' });
+      await inspectOverlay('#screenhawk-field-helper');
+    } finally {
+      await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+    }
+    assert.ok(commands.some(({ name, shortcut }) => name === 'magic-wand' && shortcut.includes('Z')));
+    const password = page.locator('input[type=password]');
+    assert.notEqual(await password.evaluate((input) => input.style.outlineStyle), 'solid');
+    await field.click();
+    await control('#open').click();
+    assert.equal(await control('#label').inputValue(), label);
+    await control('#instructions').fill(instructions);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'inline-instructions.png') });
+    await delay(700);
+    await control('#generate').click();
+    await control('#insert').waitFor();
+    assert.equal(await field.inputValue(), value);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'inline-review.png') });
+    await delay(850);
+    await control('#insert').click();
+    await wand.waitFor({ state: 'detached' });
+    assert.equal(await field.inputValue(), draftAnswer);
+    assert.equal(await page.locator('#role').inputValue(), 'fixture-other-field');
+    assert.equal(await password.inputValue(), 'fixture-password');
+    assert.equal(await page.locator('body').getAttribute('data-submitted'), null);
+    assert.equal(requests.length, requestCount + 2);
+    assert.deepEqual(requests.at(-1).body.messages, body.messages);
+    console.log('PASS field selection, inline text-only draft, explicit insertion and no form submission');
+
   }
 
   console.log(`PASS ${real ? 'real OpenAI' : 'local mock'} | ${defaultModel} | 73.19 in the on-page answer | shortcut ${shortcut.shortcut}`);

@@ -27,6 +27,10 @@
     "capture-screenshot": {
       "suggested_key": { "default": "Ctrl+Shift+S", "mac": "Command+Shift+S" },
       "description": "Select a page area"
+    },
+    "magic-wand": {
+      "suggested_key": { "default": "Ctrl+Shift+Z", "mac": "Command+Shift+Z" },
+      "description": "Choose a text field for ScreenHawk assistance"
     }
   },
   "content_security_policy": {

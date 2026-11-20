@@ -42,16 +42,24 @@ async function startCapture(tab?: chrome.tabs.Tab) {
 
 const formError = 'Click an editable text area on the page, then choose Draft for field again.';
 
-async function startFormDraft(tab?: chrome.tabs.Tab) {
+async function startFormDraft(tab?: chrome.tabs.Tab, action: 'startFormDraft' | 'activateMagicWand' = 'startFormDraft') {
+  const message = action === 'startFormDraft' ? formError : 'Open a regular web page to choose a field.';
   if (tab?.id === undefined || !tab.active || !/^https?:\/\//.test(tab.url ?? '')) {
-    return { ok: false, message: formError };
+    return { ok: false, message };
   }
   const [page] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-  const result = await chrome.tabs.sendMessage(tab.id, { action: 'startFormDraft' }, { documentId: page.documentId });
+  const result = await chrome.tabs.sendMessage(tab.id, { action }, { documentId: page.documentId });
   return result?.ok ? { ok: true } : { ok: false, message: formError };
 }
 
 chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === 'magic-wand') {
+    void (async () => {
+      const active = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+      await startFormDraft(active, 'activateMagicWand');
+    })().catch(() => {});
+    return;
+  }
   if (command !== 'capture-screenshot') return;
   void (async () => {
     const result = await startCapture(tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]);
@@ -71,9 +79,9 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
       return true;
     }
-    if (message?.action === 'startFormDraft') {
+    if (message?.action === 'startFormDraft' || message?.action === 'activateMagicWand') {
       chrome.tabs.query({ active: true, currentWindow: true })
-        .then(([tab]) => startFormDraft(tab)).then(respond, () => respond({ ok: false, message: formError }));
+        .then(([tab]) => startFormDraft(tab, message.action)).then(respond, () => respond({ ok: false, message: formError }));
       return true;
     }
   }

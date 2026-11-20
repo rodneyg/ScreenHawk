@@ -1,3 +1,5 @@
+import { chooseField, getFieldLabel } from './form-assistance';
+
 type Point = { x: number; y: number };
 type Answer =
   | { ok: true; answer: string }
@@ -9,13 +11,21 @@ let nextQuestion = 0;
 if (!global.screenHawkInstalled) {
   global.screenHawkInstalled = true;
   let closeQuestion: (() => void) | undefined;
+  let closeWand: (() => void) | undefined;
 
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id || sender.tab) return;
-    if (message?.action === 'resetCapture') {
+    if (message?.action === 'activateMagicWand') {
+      closeQuestion?.();
+      closeWand?.();
+      closeWand = chooseField(() => String(++nextQuestion));
+      respond({ ok: true });
+    } else if (message?.action === 'resetCapture') {
+      closeWand?.();
       closeQuestion?.();
       respond({ ok: true });
     } else if (message?.action === 'startFormDraft') {
+      closeWand?.();
       const field = document.activeElement;
       if (!(field instanceof HTMLTextAreaElement) || field.readOnly || field.matches(':disabled')) {
         respond({ ok: false });
@@ -33,17 +43,6 @@ if (!global.screenHawkInstalled) {
       return true;
     }
   });
-}
-
-function getFieldLabel(field: HTMLTextAreaElement) {
-  // A wrapping label can include a textarea's default value or other controls.
-  const label = field.labels?.[0]?.cloneNode(true) as HTMLLabelElement | undefined;
-  label?.querySelectorAll(
-    'input, textarea, select, button, output, script, style, [contenteditable], [hidden], [aria-hidden="true"]',
-  )
-    .forEach((control) => control.remove());
-  return (field.getAttribute('aria-label')?.trim() || label?.textContent?.trim() || field.placeholder)
-    .replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
 async function selectArea(snapshot: string) {

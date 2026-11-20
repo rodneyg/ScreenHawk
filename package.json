@@ -8,7 +8,8 @@
     "e2e:real": "npm run build && node test/e2e.mjs --real",
     "changelog:build": "node scripts/changelog.js build",
     "changelog:add": "node scripts/changelog.js add",
-    "test:changelog": "node --test scripts/changelog.test.cjs && npm run changelog:build && git diff --exit-code -- site/changelog.html"
+    "test:changelog": "node --test scripts/changelog.test.cjs && npm run changelog:build && git diff --exit-code -- site/changelog.html",
+    "posttest": "node --test test/magic-wand.test.cjs"
   },
   "keywords": [],
   "author": "Rodney Gainous Jr",
