@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f3">
+  <title>ScreenHawk | Ask about any part of a Chrome tab</title>
+  <meta name="description" content="Select part of a Chrome tab, ask a question, and get an OpenAI answer on the page with ScreenHawk.">
+  <link rel="canonical" href="https://screenhawk.rodneygainous.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ScreenHawk">
+  <meta property="og:title" content="ScreenHawk | Ask about any part of a Chrome tab">
+  <meta property="og:description" content="Select part of a Chrome tab, ask a question, and get an OpenAI answer on the page with ScreenHawk.">
+  <meta property="og:url" content="https://screenhawk.rodneygainous.com/">
+  <meta property="og:image" content="https://screenhawk.rodneygainous.com/assets/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="ScreenHawk selecting part of an example Chrome tab">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/assets/icon.png" type="image/png">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/store.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <div class="wrap bar-inner">
+      <a class="brand" href="/"><img src="/assets/icon.png" width="32" height="32" alt="">ScreenHawk</a>
+      <nav class="nav" aria-label="Main">
+        <a href="/#how-it-works">How it works</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/support">Support</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <section class="hero wrap">
+      <div>
+        <p class="kicker">Chrome extension</p>
+        <h1>Ask about what’s on your screen.</h1>
+        <p>Select part of a Chrome tab, ask a question, and get an OpenAI answer without leaving the page.</p>
+        <div class="actions">
+          <a class="button button-primary" role="link" aria-disabled="true" data-store-url="">Coming soon to the Chrome Web Store</a>
+          <a class="button" href="https://github.com/rodneyg/ScreenHawk">Install from source on GitHub</a>
+        </div>
+      </div>
+      <figure class="shot">
+        <div class="window">
+          <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+          <img src="/assets/select.png" width="900" height="510" alt="ScreenHawk selection box around the Cedar Ridge trail status on an example page" fetchpriority="high">
+        </div>
+        <figcaption>Drag a box around the part of the page you want to ask about.</figcaption>
+      </figure>
+    </section>
+
+    <section class="section" id="how-it-works">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><h3>Open ScreenHawk</h3><p>Click ScreenHawk in the Chrome toolbar or use its capture shortcut.</p></li>
+          <li><h3>Select an area</h3><p>Drag a box around a chart, a message, or any visible part of the page.</p></li>
+          <li><h3>Ask a question</h3><p>Submit your question and read the answer on the same tab.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap split">
+        <div class="copy">
+          <h2>Bring your own OpenAI key</h2>
+          <p>Save your OpenAI API key in ScreenHawk’s options. The key stays in local extension storage. Your browser uses it to send the selected image and your question directly to OpenAI when you submit.</p>
+          <h3>What does it cost?</h3>
+          <p>You pay OpenAI directly, usually fractions of a cent for a small selection and short question. The model, image size, and answer length affect the price. See <a href="https://openai.com/api/pricing/">OpenAI API pricing</a>.</p>
+        </div>
+        <figure class="shot">
+          <div class="window">
+            <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+            <img src="/assets/question.png" width="900" height="510" alt="ScreenHawk question dialog containing the question Which of these trails is closed?" loading="lazy">
+          </div>
+          <figcaption>Type your question after making a selection.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="wrap split install">
+        <div class="copy">
+          <h2>Install from source</h2>
+          <p>You can try the development build while the Chrome Web Store listing is pending.</p>
+          <p><a href="https://github.com/rodneyg/ScreenHawk">View the ScreenHawk repository</a></p>
+        </div>
+        <div>
+          <pre><code>git clone https://github.com/rodneyg/ScreenHawk.git
+cd ScreenHawk
+npm ci
+npm run build</code></pre>
+          <ol>
+            <li>Open <code>chrome://extensions</code> and turn on Developer mode.</li>
+            <li>Click <strong>Load unpacked</strong> and select the <code>dist</code> folder.</li>
+            <li>Open ScreenHawk’s options and save your OpenAI API key.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap faq">
+        <h2>Frequently asked questions</h2>
+        <details><summary>Do I need a ScreenHawk account?</summary><p>ScreenHawk has no account. You’ll need an OpenAI API key from a project with API access and billing set up. API billing is separate from a ChatGPT subscription.</p></details>
+        <details><summary>What part of my screen gets sent?</summary><p>When you submit a question, ScreenHawk sends the rectangle you selected and the question you typed directly to OpenAI. Read the <a href="/privacy">privacy policy</a> for details.</p></details>
+        <details><summary>Where can I use ScreenHawk?</summary><p>Use it on regular web pages in desktop Chrome. Chrome restricts extensions on internal pages such as Settings and on the Chrome Web Store.</p></details>
+        <details><summary>How do I change the capture shortcut?</summary><p>Open <code>chrome://extensions/shortcuts</code> and choose a shortcut for ScreenHawk’s capture command.</p></details>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="wrap foot-inner">
+      <p>ScreenHawk by Rodney Gainous Jr</p>
+      <nav class="nav" aria-label="Footer">
+        <a href="/privacy">Privacy</a>
+        <a href="/support">Support</a>
+        <a href="https://github.com/rodneyg/ScreenHawk">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

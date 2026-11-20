@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f3">
+  <title>ScreenHawk Privacy Policy</title>
+  <meta name="description" content="Learn where ScreenHawk stores your key, what it sends to OpenAI, and why it requests each Chrome permission.">
+  <link rel="canonical" href="https://screenhawk.rodneygainous.com/privacy">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ScreenHawk">
+  <meta property="og:title" content="ScreenHawk Privacy Policy">
+  <meta property="og:description" content="Learn where ScreenHawk stores your key, what it sends to OpenAI, and why it requests each Chrome permission.">
+  <meta property="og:url" content="https://screenhawk.rodneygainous.com/privacy">
+  <meta property="og:image" content="https://screenhawk.rodneygainous.com/assets/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="ScreenHawk selecting part of an example Chrome tab">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/assets/icon.png" type="image/png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <div class="wrap bar-inner">
+      <a class="brand" href="/"><img src="/assets/icon.png" width="32" height="32" alt="">ScreenHawk</a>
+      <nav class="nav" aria-label="Main">
+        <a href="/#how-it-works">How it works</a>
+        <a href="/privacy" aria-current="page">Privacy</a>
+        <a href="/support">Support</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="wrap article">
+    <p class="kicker">Effective November 20, 2026</p>
+    <h1>Privacy policy</h1>
+    <p>Rodney Gainous Jr publishes ScreenHawk. ScreenHawk has no account, developer server, or analytics. This website uses no analytics or cookies.</p>
+
+    <h2>On your device</h2>
+    <p>ScreenHawk stores your OpenAI API key only on this device in <code>chrome.storage.local</code>. Your browser captures the visible tab and crops the image to the area you select.</p>
+
+    <h2>What OpenAI receives</h2>
+    <p>When you submit a question, your browser sends the selected screenshot area and your question directly to <code>api.openai.com</code> using your own API key. The response appears on your tab. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
+    <p>Rodney Gainous Jr does not receive, sell, or share your key, screenshots, or questions.</p>
+
+    <h2>Chrome permissions</h2>
+    <ul id="permissions">
+      <li><strong><code>activeTab</code></strong> gives ScreenHawk temporary access to the tab where you start a capture.</li>
+      <li><strong><code>scripting</code></strong> lets ScreenHawk open the selection and question interface on a tab.</li>
+      <li><strong><code>tabs</code></strong> lets ScreenHawk find the active tab for capture and show the answer there.</li>
+      <li><strong><code>storage</code></strong> saves your OpenAI API key locally.</li>
+      <li><strong><code>&lt;all_urls&gt;</code></strong> lets the selection interface run on regular web pages and allows requests to OpenAI.</li>
+    </ul>
+
+    <h2>Remove your data</h2>
+    <p>Remove your key in ScreenHawk’s options or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
+
+    <h2>Contact</h2>
+    <p>Email Rodney Gainous Jr at <a href="mailto:rodney.gainous@gmail.com">rodney.gainous@gmail.com</a> for privacy questions.</p>
+  </main>
+  <footer class="footer">
+    <div class="wrap foot-inner">
+      <p>ScreenHawk by Rodney Gainous Jr</p>
+      <nav class="nav" aria-label="Footer">
+        <a href="/privacy" aria-current="page">Privacy</a>
+        <a href="/support">Support</a>
+        <a href="https://github.com/rodneyg/ScreenHawk">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
