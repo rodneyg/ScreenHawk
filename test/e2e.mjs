@@ -35,6 +35,9 @@ let historyVideo;
 let server;
 let stage = 'start local server';
 const requests = [];
+const mockRequestReceived = Promise.withResolvers();
+const mockAnswerRelease = Promise.withResolvers();
+let mockAnswerSent = false;
 
 function assertCrop(image, area, dpr) {
   assert.ok(image.startsWith('data:image/png;base64,'), 'vision image is a PNG data URL');
@@ -65,9 +68,13 @@ try {
       const body = JSON.parse(Buffer.concat(chunks));
       requests.push({ body, authorization: req.headers.authorization });
       const rejected = req.headers.authorization !== `Bearer ${mockKey}`;
-      const answer = body.messages[0].content.some(({ type }) => type === 'image_url')
-        ? 'The invoice total is $73.19.' : draftAnswer;
-      await delay(350);
+      const hasImage = body.messages[0].content.some(({ type }) => type === 'image_url');
+      const answer = hasImage ? 'The invoice total is $73.19.' : draftAnswer;
+      if (hasImage && !rejected) {
+        mockRequestReceived.resolve();
+        await mockAnswerRelease.promise;
+        mockAnswerSent = true;
+      }
       res.writeHead(rejected ? 401 : 200, { 'Content-Type': 'application/json' }).end(JSON.stringify(
         rejected ? { error: { message: 'Rejected by test server' } } :
           { choices: [{ message: { content: answer } }] },
@@ -242,6 +249,12 @@ try {
     return popup;
   }
 
+  async function assertAnswer() {
+    await control('#answer:not(:empty), #error:not([hidden])').waitFor({ timeout: 30000 });
+    if (await control('#error').isVisible()) throw new Error(await control('#error').innerText());
+    assert.match(await control('#answer').innerText(), /73\.19/, 'invoice total missing from answer');
+  }
+
   stage = 'verify missing-key handling and options';
   await capture();
   await selectArea();
@@ -295,21 +308,44 @@ try {
   await selectArea(path.join(evidence, '01-area-select.png'));
   await page.screenshot({ scale: 'css', path: path.join(evidence, '02-prompt.png') });
   await delay(550);
+  const initiatingTab = !real && await worker.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    return { id: tab.id, windowId: tab.windowId, url: tab.url };
+  });
   await control('button[type=submit]').click();
   if (!real) {
-    // The answer must follow the initiating document, even if another tab becomes active.
-    const anotherTab = await context.newPage();
-    await anotherTab.goto(`${origin}/another-tab`);
-    await control('#answer').waitFor({ state: 'visible' });
-    assert.equal(await anotherTab.locator('#screenhawk-overlay').count(), 0);
-    await anotherTab.close();
+    stage = 'verify delivery while the second tab is active';
+    assert.equal(initiatingTab.url, page.url(), 'the initiating page must start as the active tab');
+    await Promise.race([
+      mockRequestReceived.promise,
+      delay(7000, undefined, { ref: false }).then(() => assert.fail('the mock API did not receive the question')),
+    ]);
+    const secondTab = await context.newPage();
+    await secondTab.goto(`${origin}/another-tab`);
+    await secondTab.bringToFront();
+    const tabs = await worker.evaluate((windowId) => chrome.tabs.query({ windowId }), initiatingTab.windowId);
+    assert.equal(tabs.length, 2);
+    const other = tabs.find(({ id }) => id !== initiatingTab.id);
+    assert.equal(other?.active, true, 'Chromium must report the second tab as active');
+    assert.equal(mockAnswerSent, false, 'mock response was sent before the second tab became active');
+    assert.equal(await control('#answer').isVisible(), false, 'answer is hidden before release');
+    mockAnswerRelease.resolve();
+
+    await assertAnswer();
+    const [activeTab] = await worker.evaluate((windowId) => chrome.tabs.query({ active: true, windowId }), initiatingTab.windowId);
+    assert.equal(activeTab?.id, other.id, 'the second tab must stay active through answer delivery');
+    assert.equal(await secondTab.locator('#screenhawk-overlay').count(), 0, 'the second tab must not receive an overlay');
+    console.log('PASS two-tab timing | response held until second tab active | answer reached initiating tab only');
+    await secondTab.close();
     await page.bringToFront();
+  } else {
+    stage = 'assert that answer contains 73.19';
+    await assertAnswer();
   }
 
-  stage = 'assert that answer contains 73.19';
-  await control('section:not([hidden]) #answer, #error:not([hidden])').waitFor({ timeout: 30000 });
-  if (await control('#error').isVisible()) throw new Error(await control('#error').innerText());
-  assert.ok((await control('#answer').innerText()).includes('73.19'), 'invoice total missing from answer');
+  stage = 'verify answer focus and record the answer';
+  assert.ok(await control('#answer-title').evaluate((heading) => heading.matches(':focus')),
+    'answer heading should receive focus');
   await page.screenshot({ scale: 'css', path: path.join(evidence, '03-answer.png') });
   await delay(850);
 
@@ -377,6 +413,135 @@ try {
     await settingsPage.getByRole('heading', { name: 'Settings' }).waitFor();
     await settingsPage.close();
     await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+
+    stage = 'verify Settings touch target at 320 CSS pixels';
+    const popupPage = await context.newPage();
+    await popupPage.setViewportSize({ width: 320, height: 400 });
+    await popupPage.goto(`${base}/popup.html`);
+    const settingsLink = popupPage.getByRole('link', { name: 'Settings', exact: true });
+    const box = await settingsLink.boundingBox();
+    assert.ok(box && box.height >= 44, 'Settings link should be at least 44 CSS pixels tall');
+    await popupPage.close();
+  }
+
+  if (!real) {
+    const narrow = { width: 320, height: 480 };
+    const invoiceActions = page.getByRole('button', { name: 'Invoice actions' });
+
+    async function assertFocused(locator) {
+      assert.ok(await locator.evaluate((element) => element === element.getRootNode().activeElement),
+        `expected focus on ${locator}`);
+    }
+
+    async function assertInViewport(locator, viewport) {
+      const box = await locator.boundingBox();
+      assert.ok(box && box.width > 0 && box.height > 0 &&
+        box.x >= 0 && box.y >= 0 &&
+        box.x + box.width <= viewport.width && box.y + box.height <= viewport.height,
+      `expected ${locator} within ${viewport.width}x${viewport.height}, got ${JSON.stringify(box)}`);
+    }
+
+    stage = 'verify selection focus and Escape restoration at 320x480';
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    // Selection mode closes on resize. Let the new viewport finish laying out before capture.
+    await page.setViewportSize(narrow);
+    await page.waitForFunction(({ width, height }) => innerWidth === width && innerHeight === height, narrow);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await invoiceActions.focus();
+    await assertFocused(invoiceActions);
+    await capture();
+    await assertFocused(control('dialog'));
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    await assertFocused(invoiceActions);
+
+    stage = 'verify touch drag and cancellation at 320x480';
+    const priorRequests = requests.length;
+    await worker.evaluate(() => chrome.storage.local.remove('apiKey'));
+    await capture();
+    const dispatchTouch = (type, touchPoints = []) =>
+      pageCDP.send('Input.dispatchTouchEvent', { type, touchPoints });
+
+    await dispatchTouch('touchStart', [{ x: 30, y: 110 }]);
+    await dispatchTouch('touchEnd');
+    await control('#area').waitFor({ state: 'visible' });
+    assert.equal(await control('#question').isVisible(), false);
+
+    await dispatchTouch('touchStart', [{ x: 30, y: 110 }]);
+    await dispatchTouch('touchMove', [{ x: 100, y: 160 }]);
+    await control('#box').waitFor({ state: 'visible' });
+    await dispatchTouch('touchCancel');
+    await control('#box').waitFor({ state: 'hidden' });
+    await control('#area').waitFor({ state: 'visible' });
+    assert.equal(await control('#question').isVisible(), false);
+
+    await dispatchTouch('touchStart', [{ x: 30, y: 110 }]);
+    await dispatchTouch('touchMove', [{ x: 100, y: 160 }]);
+    await dispatchTouch('touchEnd');
+    await control('#question').waitFor({ state: 'visible' });
+    assert.equal(requests.length, priorRequests);
+
+    stage = 'verify narrow prompt and error controls by keyboard';
+    const prompt = control('#question');
+    const cancel = control('#cancel');
+    const ask = control('button[type=submit]');
+    await assertFocused(prompt);
+    for (const locator of [control('form h2'), prompt, cancel, ask]) {
+      await assertInViewport(locator, narrow);
+    }
+    await page.keyboard.type(question);
+    await page.keyboard.press('Tab');
+    await assertFocused(cancel);
+    await page.keyboard.press('Tab');
+    await assertFocused(ask);
+    await page.keyboard.press('Shift+Tab');
+    await assertFocused(cancel);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await control('#error').waitFor({ state: 'visible' });
+    assert.match(await control('#error').innerText(), /Add your OpenAI API key/);
+    assert.equal(requests.length, priorRequests);
+    await assertInViewport(control('#error'), narrow);
+    await assertInViewport(control('#options'), narrow);
+    await assertInViewport(cancel, narrow);
+    await assertInViewport(ask, narrow);
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    await assertFocused(invoiceActions);
+
+    stage = 'verify keyboard order and viewport fit in narrow settings and popup documents';
+    const settings = await context.newPage();
+    await settings.setViewportSize(narrow);
+    await settings.goto(`${base}/options.html`);
+    await settings.waitForFunction(() => !document.querySelector('fieldset').disabled);
+    for (const locator of [
+      settings.getByLabel('OpenAI API key'),
+      settings.getByLabel('Vision model'),
+      settings.getByRole('button', { name: 'Save settings' }),
+    ]) {
+      await settings.keyboard.press('Tab');
+      await assertFocused(locator);
+      await assertInViewport(locator, narrow);
+    }
+    await settings.close();
+
+    // A tab lets us size the popup document independently of the native toolbar bubble.
+    const popup = await context.newPage();
+    await popup.setViewportSize(narrow);
+    await popup.goto(`${base}/popup.html`);
+    for (const locator of [
+      popup.getByRole('button', { name: 'Select area' }),
+      popup.getByRole('button', { name: 'Draft for field' }),
+      popup.getByRole('link', { name: 'Settings' }),
+    ]) {
+      await popup.keyboard.press('Tab');
+      await assertFocused(locator);
+      await assertInViewport(locator, narrow);
+    }
+    await popup.close();
+
+    console.log('PASS 320x480 selection focus and Escape restoration, tiny touch, touch cancel and drag, prompt and error controls, Settings and popup keyboard order');
   }
 
   stage = 'verify keyboard command registration';
@@ -472,6 +637,7 @@ try {
   console.error(`FAIL ${stage}: ${message}`);
   process.exitCode = 1;
 } finally {
+  mockAnswerRelease.resolve();
   try {
     const videoPath = await video?.path();
     const historyPath = await historyVideo?.path();

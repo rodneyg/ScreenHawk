@@ -20,6 +20,7 @@ button { background: #77f1cf; color: #0b2921; border: none; border-radius: 8px; 
 button:disabled { opacity: .6; cursor: wait; }
 :focus-visible { outline: 2px solid #77f1cf; outline-offset: 3px; }
 .actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.popup #settings { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 8px; }
 fieldset button { justify-self: start; }
 .popup .secondary { background: #21353f; color: #a6f6e0; }
 .popup #settings { display: inline-block; margin-top: 12px; }
