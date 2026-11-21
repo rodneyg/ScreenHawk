@@ -13,9 +13,19 @@ const key = 'interactionHistory';
 const limit = 50;
 let writes: Promise<void> = Promise.resolve();
 
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+  if (typeof value !== 'object' || value === null) return false;
+  const entry = value as Partial<HistoryEntry>;
+  return typeof entry.id === 'string' && entry.id.length > 0 &&
+    typeof entry.timestamp === 'number' && Number.isFinite(new Date(entry.timestamp).getTime()) &&
+    typeof entry.prompt === 'string' && typeof entry.answer === 'string' &&
+    typeof entry.thumbnail === 'string';
+}
+
 export async function readHistory(): Promise<HistoryEntry[]> {
-  const stored = await chrome.storage.local.get<{ [key]: HistoryEntry[] }>({ [key]: [] });
-  return stored[key];
+  const stored = await chrome.storage.local.get<{ [key]: unknown }>({ [key]: [] });
+  const entries = stored[key];
+  return Array.isArray(entries) ? entries.filter(isHistoryEntry) : [];
 }
 
 // Keep saves and deletes from overwriting each other in the extension worker.
