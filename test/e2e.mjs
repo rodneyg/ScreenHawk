@@ -131,6 +131,16 @@ try {
   const id = new URL(worker.url()).hostname;
   const base = `chrome-extension://${id}`;
   const page = context.pages()[0];
+  stage = 'verify translucent popup capture button and hover tint';
+  const popupPage = await context.newPage();
+  await popupPage.goto(`${base}/popup.html`);
+  const captureButton = popupPage.getByRole('button', { name: 'Select area' });
+  assert.equal(await captureButton.evaluate(button => getComputedStyle(button).backgroundColor), 'rgba(119, 241, 207, 0.2)');
+  await popupPage.screenshot({ scale: 'css', path: path.join(evidence, '06-popup-rest.png') });
+  await captureButton.hover();
+  assert.equal(await captureButton.evaluate(button => getComputedStyle(button).backgroundColor), 'rgba(119, 241, 207, 0.3)');
+  await popupPage.screenshot({ scale: 'css', path: path.join(evidence, '07-popup-hover.png') });
+  await popupPage.close();
   video = page.video();
   await page.goto(origin);
   await page.getByRole('heading', { name: 'Invoice HAWK-4821' }).waitFor();
@@ -335,6 +345,7 @@ try {
   const active = { ...idle, backgroundColor: 'rgba(119, 241, 207, 0.24)', opacity: '1' };
   await page.mouse.move(0, 0);
   assert.deepEqual(await askAppearance(), idle, 'Ask uses dimmed, translucent glass at rest');
+  assert.equal(await control('#cancel').evaluate(button => getComputedStyle(button).backgroundColor), 'rgba(170, 194, 204, 0.15)');
   const { height, width } = await ask.boundingBox();
   assert.ok(width >= 24 && height >= 24, 'Ask has at least a 24 by 24 CSS pixel hit target');
   await control('#cancel').focus();
@@ -388,6 +399,8 @@ try {
   console.log('PASS Ask render, right-edge click, and visibility before selection, after an error, and after an answer');
   assert.ok(await control('#answer-title').evaluate((heading) => heading.matches(':focus')),
     'answer heading should receive focus');
+  await page.mouse.move(0, 0);
+  assert.equal(await control('#close').evaluate(button => getComputedStyle(button).backgroundColor), 'rgba(119, 241, 207, 0.2)');
   await page.screenshot({ scale: 'css', path: path.join(evidence, '03-answer.png') });
   await delay(850);
 
