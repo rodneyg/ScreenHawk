@@ -14,7 +14,7 @@
     "changelog:build": "node scripts/changelog.js build",
     "changelog:add": "node scripts/changelog.js add",
     "test:changelog": "node --test scripts/changelog.test.cjs && npm run changelog:build && git diff --exit-code -- site/changelog.html",
-    "test:failures": "node --test test/background-failures.test.cjs test/ui-failures.test.mjs"
+    "test:failures": "node --test test/background-failures.test.cjs test/ui-failures.test.mjs test/options-popup-errors.test.mjs"
   },
   "keywords": [],
   "author": "Rodney Gainous Jr",
