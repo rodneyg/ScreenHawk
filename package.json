@@ -11,7 +11,7 @@
     "check:icons": "node scripts/check-icons.cjs",
     "package:zip": "node scripts/package-zip.cjs",
     "test:package-zip": "node --test scripts/package-zip.test.cjs",
-    "posttest": "node --test test/permission-errors.test.cjs && node --test test/site-analytics.test.mjs",
+    "posttest": "node --test test/permission-errors.test.cjs && node --test test/site-analytics.test.mjs && node --test test/magic-wand.test.cjs",
     "changelog:build": "node scripts/changelog.js build",
     "changelog:add": "node scripts/changelog.js add",
     "test:changelog": "node --test scripts/changelog.test.cjs && npm run changelog:build && git diff --exit-code -- site/changelog.html",

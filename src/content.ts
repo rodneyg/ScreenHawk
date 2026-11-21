@@ -1,3 +1,5 @@
+import { chooseField, isEditable, type Field } from './form-assistance';
+
 type Point = { x: number; y: number };
 type Answer =
   | { ok: true; answer: string; historySaveFailed?: boolean }
@@ -15,6 +17,10 @@ if (!global.screenHawkInstalled) {
     if (message?.action === 'resetCapture') {
       closeQuestion?.();
       respond({ ok: true });
+    } else if (message?.action === 'activateMagicWand') {
+      closeQuestion?.();
+      closeQuestion = chooseField(openDraftButton);
+      respond({ ok: true });
     } else if (message?.action === 'startFormDraft') {
       const field = document.activeElement;
       if (!(field instanceof HTMLTextAreaElement) || !isEditable(field)) {
@@ -22,9 +28,7 @@ if (!global.screenHawkInstalled) {
         return;
       }
       closeQuestion?.();
-      closeQuestion = showDraftButton(field, () => {
-        closeQuestion = showQuestion({ field });
-      });
+      openDraftButton(field);
       respond({ ok: true });
     } else if (message?.action === 'startSelection') {
       closeQuestion?.();
@@ -35,13 +39,15 @@ if (!global.screenHawkInstalled) {
       return true;
     }
   });
+
+  function openDraftButton(field: Field) {
+    closeQuestion = showDraftButton(field, () => {
+      closeQuestion = showQuestion({ field });
+    });
+  }
 }
 
-function isEditable(field: HTMLTextAreaElement) {
-  return field.isConnected && !field.readOnly && !field.matches(':disabled');
-}
-
-function showDraftButton(field: HTMLTextAreaElement, openDraft: () => void) {
+function showDraftButton(field: Field, openDraft: () => void) {
   const lifetime = new AbortController();
   const host = document.createElement('div');
   host.id = 'screenhawk-draft-launcher';
@@ -103,7 +109,7 @@ function showDraftButton(field: HTMLTextAreaElement, openDraft: () => void) {
   return close;
 }
 
-function getFieldLabel(field: HTMLTextAreaElement) {
+function getFieldLabel(field: Field) {
   // A wrapping label can include a textarea's default value or other controls.
   const label = field.labels?.[0]?.cloneNode(true) as HTMLLabelElement | undefined;
   label?.querySelectorAll(
@@ -130,7 +136,7 @@ async function selectArea(snapshot: string) {
   return showQuestion({ preview });
 }
 
-function showQuestion(context: { preview: HTMLCanvasElement } | { field: HTMLTextAreaElement }) {
+function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }) {
   const preview = 'preview' in context ? context.preview : undefined;
   const field = 'field' in context ? context.field : undefined;
   const drafting = !!field;
@@ -281,17 +287,19 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: HTMLTex
   root.querySelector('#close')!.addEventListener('click', close);
   if (field) {
     insert.hidden = false;
+    const fieldName = field instanceof HTMLTextAreaElement ? 'text area' : 'text field';
     if (originalValue) insert.textContent = 'Replace field text';
     insert.addEventListener('click', (event) => {
       if (!event.isTrusted) return;
       const draft = answer.textContent ?? '';
       const insertError = root.querySelector<HTMLParagraphElement>('#insert-error')!;
       if (!isEditable(field) || field.value !== originalValue) {
-        insertError.textContent = 'The text area changed. You can still copy this draft.';
+        insertError.textContent = `The ${fieldName} changed. You can still copy this draft.`;
       } else if (field.maxLength >= 0 && draft.length > field.maxLength) {
-        insertError.textContent = 'This draft is too long for the text area. You can still copy it.';
+        insertError.textContent = `This draft is too long for the ${fieldName}. You can still copy it.`;
       } else {
-        field.value = draft;
+        const prototype = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(field, draft);
         field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText' }));
         close();
         field.focus({ preventScroll: true });

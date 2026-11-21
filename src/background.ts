@@ -43,16 +43,29 @@ async function startCapture(tab?: chrome.tabs.Tab) {
 
 const formError = 'Click an editable text area on the page, then choose Draft for field again.';
 
-async function startFormDraft(tab?: chrome.tabs.Tab) {
+const pickerError = 'Open a regular web page to choose a field.';
+
+async function startFormDraft(tab?: chrome.tabs.Tab, action: 'startFormDraft' | 'activateMagicWand' = 'startFormDraft') {
+  const message = action === 'startFormDraft' ? formError : pickerError;
   if (tab?.id === undefined || !tab.active || !/^https?:\/\//.test(tab.url ?? '')) {
-    return { ok: false, message: formError };
+    return { ok: false, message };
   }
   const [page] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-  const result = await chrome.tabs.sendMessage(tab.id, { action: 'startFormDraft' }, { documentId: page.documentId });
-  return result?.ok ? { ok: true } : { ok: false, message: formError };
+  const result = await chrome.tabs.sendMessage(tab.id, { action }, { documentId: page.documentId });
+  return result?.ok ? { ok: true } : { ok: false, message };
 }
 
 chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === 'magic-wand') {
+    void (async () => {
+      const activeTab = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+      const result = await startFormDraft(activeTab, 'activateMagicWand').catch(() => ({ ok: false, message: pickerError }));
+      if (activeTab?.id !== undefined) {
+        await chrome.action.setTitle({ tabId: activeTab.id, title: result.ok ? 'ScreenHawk' : pickerError });
+      }
+    })().catch(() => {});
+    return;
+  }
   if (command !== 'capture-screenshot') return;
   void (async () => {
     const result = await startCapture(tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]);
@@ -75,6 +88,12 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (message?.action === 'startFormDraft') {
       chrome.tabs.query({ active: true, currentWindow: true })
         .then(([tab]) => startFormDraft(tab)).then(respond, () => respond({ ok: false, message: formError }));
+      return true;
+    }
+    if (message?.action === 'activateMagicWand') {
+      chrome.tabs.query({ active: true, currentWindow: true })
+        .then(([tab]) => startFormDraft(tab, 'activateMagicWand'))
+        .then(respond, () => respond({ ok: false, message: pickerError }));
       return true;
     }
     if (message?.action === 'deleteInteraction' && typeof message.id === 'string') {
@@ -106,7 +125,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   } else if (message.action === 'draft') {
     if (typeof message.fieldLabel !== 'string' || message.fieldLabel.length > 200) return;
     const context = JSON.stringify({ fieldLabel: message.fieldLabel, instructions: message.prompt });
-    prompt = `Write only a draft for the user's text area. Use the field label as context.\n${context}`;
+    prompt = `Write only a draft for the user's text field. Use the field label as context.\n${context}`;
   } else {
     return;
   }
