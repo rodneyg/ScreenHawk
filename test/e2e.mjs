@@ -319,11 +319,40 @@ try {
   await selectArea(path.join(evidence, '01-area-select.png'));
   await page.screenshot({ scale: 'css', path: path.join(evidence, '02-prompt.png') });
   await delay(550);
+
+  stage = 'verify the glass Ask button and submit';
+  const ask = control('button[type=submit]');
+  const askAppearance = () => ask.evaluate((button) => {
+    const { backgroundColor, backdropFilter, borderTopColor, opacity } = getComputedStyle(button);
+    return { backgroundColor, backdropFilter, borderTopColor, opacity };
+  });
+  const idle = {
+    backgroundColor: 'rgba(119, 241, 207, 0.14)',
+    backdropFilter: 'blur(8px)',
+    borderTopColor: 'rgba(119, 241, 207, 0.34)',
+    opacity: '0.78',
+  };
+  const active = { ...idle, backgroundColor: 'rgba(119, 241, 207, 0.24)', opacity: '1' };
+  await page.mouse.move(0, 0);
+  assert.deepEqual(await askAppearance(), idle, 'Ask uses dimmed, translucent glass at rest');
+  const { height, width } = await ask.boundingBox();
+  assert.ok(width >= 24 && height >= 24, 'Ask has at least a 24 by 24 CSS pixel hit target');
+  await control('#cancel').focus();
+  await page.keyboard.press('Tab');
+  assert.ok(await ask.evaluate((button) => {
+    const { outlineStyle, outlineWidth } = getComputedStyle(button);
+    return button.matches(':focus-visible') && outlineStyle === 'solid' && outlineWidth === '2px';
+  }), 'Ask has a visible outline when reached by keyboard');
+  assert.deepEqual(await askAppearance(), active, 'keyboard focus restores full opacity');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await askAppearance(), idle, 'Ask dims when keyboard focus leaves');
+  await ask.hover();
+  assert.deepEqual(await askAppearance(), active, 'hover restores full opacity and stays translucent');
   const initiatingTab = !real && await worker.evaluate(async () => {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     return { id: tab.id, windowId: tab.windowId, url: tab.url };
   });
-  await control('button[type=submit]').click();
+  await ask.click({ position: { x: 4, y: height / 2 } });
   if (!real) {
     stage = 'verify delivery while the second tab is active';
     assert.equal(initiatingTab.url, page.url(), 'the initiating page must start as the active tab');
