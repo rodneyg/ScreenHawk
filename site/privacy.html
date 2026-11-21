@@ -51,7 +51,7 @@
 
     <h2>On your device</h2>
     <p>ScreenHawk stores your own OpenAI API key and model choice on this device in <code>chrome.storage.local</code>. The default model is <code>gpt-6-luna</code>. When you start a capture, Chrome captures the visible tab. ScreenHawk crops the image to the area you select on your device.</p>
-    <p>ScreenHawk saves your latest 20 successful questions and answers, their timestamps, and a compressed thumbnail of each selected area in local history on this device.</p>
+    <p>ScreenHawk saves your latest 50 successful capture questions and answers with their timestamps, compressed selections and thumbnails, and source page addresses and titles in local history on this device.</p>
 
     <h2>What OpenAI receives</h2>
     <p>When you choose Ask, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. When you choose Generate draft, it sends only the label shown in the dialog and the instructions you type. It checks the selected text area's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. The request includes your chosen model and uses your own API key for authorization. The answer or draft appears on the page where you started the request. Successful capture answers also appear in local history. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
@@ -66,7 +66,7 @@
     </ul>
 
     <h2>Remove your data</h2>
-    <p>Delete saved entries in the ScreenHawk popup's History, remove your key in Settings, or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
+    <p>Delete individual entries or clear all saved interactions in the ScreenHawk popup's History. Remove your key in Settings or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
 
     <h2>Contact</h2>
     <p>Email Rodney Gainous Jr at <a href="mailto:rodney.gainous@gmail.com">rodney.gainous@gmail.com</a> for privacy questions.</p>

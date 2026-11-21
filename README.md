@@ -48,7 +48,7 @@ Press **Escape** to close the overlay or cancel selection. Chrome restricts exte
 
 Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It checks the selected text area's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. OpenAI handles each request under your API account. ScreenHawk does not send data to the developer or run analytics.
 
-The toolbar popup's **History** shows your latest 20 successful capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. History is stored on this device.
+The toolbar popup's **History** shows your latest 50 successful capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete it. Choose **Open details** to see a larger image and revisit the source page. Choose **Clear history** to delete all entries. History is stored on this device.
 
 ## Test
 

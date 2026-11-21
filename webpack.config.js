@@ -7,6 +7,7 @@ module.exports = {
     background: './src/background.ts',
     content: './src/content.ts',
     options: './src/options.ts',
+    'interaction-viewer': './src/interaction-viewer.ts',
   },
   module: {
     rules: [{ test: /\.ts$/, use: 'ts-loader', exclude: /node_modules/ }],
