@@ -191,10 +191,10 @@ try {
     await control('#area').waitFor();
   }
 
-  async function inspectOverlay() {
+  async function inspectOverlay(selector = '#screenhawk-overlay') {
     // Make the closed shadow tree readable only on this controlled fixture page.
     const { root } = await pageCDP.send('DOM.getDocument');
-    const { nodeId } = await pageCDP.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#screenhawk-overlay' });
+    const { nodeId } = await pageCDP.send('DOM.querySelector', { nodeId: root.nodeId, selector });
     const { node } = await pageCDP.send('DOM.describeNode', { nodeId });
     const { object } = await pageCDP.send('DOM.resolveNode', { backendNodeId: node.shadowRoots[0].backendNodeId });
     await pageCDP.send('Runtime.callFunctionOn', {
@@ -598,6 +598,7 @@ try {
 
   if (!real) {
     stage = 'verify text-only form draft on the original page';
+    await page.setViewportSize(size);
     await worker.evaluate((apiKey) => chrome.storage.local.set({ apiKey }), mockKey);
     await page.goto(`${origin}/form`);
     const field = page.locator('#experience');
@@ -608,16 +609,33 @@ try {
         event.preventDefault();
         document.body.dataset.submitted = 'yes';
       });
+      document.querySelector('#experience').addEventListener('input', () => {
+        document.body.dataset.input = 'yes';
+      });
     });
 
-    async function openDraft() {
+    async function openDraft(record = false) {
       const sessionId = await clickToolbarPopup('#draft');
+      const launcher = page.locator('#screenhawk-draft-launcher');
       try {
-        await overlay.waitFor({ state: 'attached' });
-        await inspectOverlay();
+        await launcher.waitFor({ state: 'attached' });
       } finally {
         await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
       }
+      await inspectOverlay('#screenhawk-draft-launcher');
+      const button = control('button');
+      assert.equal(await button.innerText(), 'Help me write');
+      const buttonBox = await button.boundingBox();
+      const fieldBox = await field.boundingBox();
+      assert.ok(Math.abs(buttonBox.x + buttonBox.width + 4 - fieldBox.x - fieldBox.width) <= 1);
+      assert.ok(Math.abs(buttonBox.y - fieldBox.y - 4) <= 1);
+      if (record) {
+        await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-launcher.png') });
+        await delay(1000);
+      }
+      await button.click();
+      await overlay.waitFor({ state: 'attached' });
+      await inspectOverlay();
     }
 
     const label = 'Describe your best job experience';
@@ -645,13 +663,9 @@ try {
     await field.focus();
     await openDraft();
     await control('#question').fill(instructions);
-    await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-instructions.png') });
-    await delay(700);
     await control('button[type=submit]').click();
     await control('#answer').waitFor();
     assert.equal(await control('#answer').innerText(), draftAnswer);
-    await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-draft.png') });
-    await delay(850);
 
     assert.equal(requests.length, requestCount + 1);
     const { body } = requests.at(-1);
@@ -666,10 +680,37 @@ try {
     const draftHistory = await worker.evaluate(() => chrome.storage.local.get('interactionHistory'));
     assert.deepEqual(draftHistory.interactionHistory, [], 'text drafts are not saved to capture history');
     assert.equal(await field.inputValue(), value);
+    assert.equal(await control('#insert').innerText(), 'Replace field text');
+    await field.evaluate((input) => { input.value = 'updated by the website'; });
+    await control('#insert').click();
+    assert.match(await control('#insert-error').innerText(), /text area changed/);
+    assert.equal(await field.inputValue(), 'updated by the website');
+    assert.equal(await page.locator('body').getAttribute('data-input'), null);
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+
+    await field.clear();
+    await page.evaluate(() => { delete document.body.dataset.input; });
+    await openDraft(true);
+    await control('#question').fill(instructions);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-instructions.png') });
+    await delay(1000);
+    await control('button[type=submit]').click();
+    await control('#answer').waitFor();
+    assert.equal(await field.inputValue(), '', 'generating a draft leaves the field untouched');
+    assert.equal(await control('#insert').innerText(), 'Use draft');
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'form-draft.png') });
+    await delay(1000);
+    await control('#insert').click();
+    await overlay.waitFor({ state: 'detached' });
+    assert.equal(await field.inputValue(), draftAnswer);
+    assert.equal(await field.evaluate((input) => document.activeElement === input), true);
+    assert.equal(await page.locator('body').getAttribute('data-input'), 'yes');
     assert.equal(await page.locator('#role').inputValue(), 'fixture-other-field');
     assert.equal(await page.locator('body').getAttribute('data-submitted'), null);
     assert.equal(page.url(), `${origin}/form`);
-    console.log('PASS toolbar form draft, editable label, text-only request, key guard, and unchanged website form');
+    await delay(1000);
+    console.log('PASS text area button, text-only draft, key guard, stale value guard, and explicit insertion without form submission');
   }
 
   console.log(`PASS ${real ? 'real OpenAI' : 'local mock'} | ${defaultModel} | 73.19 in the on-page answer | shortcut ${shortcut.shortcut}`);
