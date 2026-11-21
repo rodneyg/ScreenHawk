@@ -352,6 +352,15 @@ try {
     await settingsPage.getByRole('heading', { name: 'Settings' }).waitFor();
     await settingsPage.close();
     await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+
+    stage = 'verify Settings touch target at 320 CSS pixels';
+    const popupPage = await context.newPage();
+    await popupPage.setViewportSize({ width: 320, height: 400 });
+    await popupPage.goto(`${base}/popup.html`);
+    const settingsLink = popupPage.getByRole('link', { name: 'Settings', exact: true });
+    const box = await settingsLink.boundingBox();
+    assert.ok(box && box.height >= 44, 'Settings link should be at least 44 CSS pixels tall');
+    await popupPage.close();
   }
 
   stage = 'verify keyboard command registration';
