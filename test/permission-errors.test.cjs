@@ -52,15 +52,25 @@ function loadPopup(t, sendMessage) {
   const status = { textContent: 'Previous error' };
   const settings = { addEventListener: t.mock.fn() };
   const close = t.mock.fn();
-  const elements = { '#capture': capture, '#status': status, '#settings': settings };
+  const historyStatus = { textContent: '' };
+  const elements = {
+    '#capture': capture,
+    '#status': status,
+    '#settings': settings,
+    '#history-list': { replaceChildren: t.mock.fn() },
+    '#history-status': historyStatus,
+  };
   runBundle('popup.js', {
-    chrome: { runtime: { sendMessage } },
+    chrome: {
+      runtime: { sendMessage },
+      storage: { local: { get: async (defaults) => defaults } },
+    },
     document: { querySelector: (selector) => elements[selector] },
     window: { close },
   });
   const [event, click] = registerClick.mock.calls[0].arguments;
   assert.equal(event, 'click');
-  return { capture, status, close, click };
+  return { capture, status, close, click, historyStatus };
 }
 
 test('missing host permission stops capture before messaging the tab or taking a screenshot', async (t) => {
@@ -108,13 +118,14 @@ test('the popup shows the worker error and lets the user retry', async (t) => {
     executeScript: async () => { throw new Error('Missing host permission'); },
     captureVisibleTab: async () => {},
   });
-  const { capture, status, close, click } = loadPopup(t, sendMessage);
+  const { capture, status, close, click, historyStatus } = loadPopup(t, sendMessage);
 
   const completion = click();
   assert.equal(capture.disabled, true);
   assert.equal(status.textContent, '');
   await completion;
 
+  assert.equal(historyStatus.textContent, 'No saved interactions.');
   assert.equal(status.textContent, captureError);
   assert.equal(capture.disabled, false);
   assert.equal(close.mock.callCount(), 0);

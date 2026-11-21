@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { webcrypto } = require('node:crypto');
 const { readFileSync } = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
@@ -19,6 +20,7 @@ function loadWorker(t, { activeTab = tab, screenshot, fetch } = {}) {
   const listeners = new Set();
   const register = t.mock.fn();
   const readSettings = t.mock.fn(async (defaults) => ({ ...defaults, apiKey: 'fixture' }));
+  const writeHistory = t.mock.fn(async () => {});
   const fetchAnswer = t.mock.fn(fetch ?? (() => assert.fail('unexpected API request')));
   const schedule = t.mock.fn(setTimeout);
   const clear = t.mock.fn(clearTimeout);
@@ -29,7 +31,7 @@ function loadWorker(t, { activeTab = tab, screenshot, fetch } = {}) {
       getURL: () => popupUrl,
       onMessage: { addListener: register },
     },
-    storage: { local: { setAccessLevel: async () => {}, get: readSettings } },
+    storage: { local: { setAccessLevel: async () => {}, get: readSettings, set: writeHistory } },
     scripting: { executeScript: t.mock.fn(async () => [{ documentId: contentSender.documentId }]) },
     tabs: {
       query: t.mock.fn(async () => [activeTab]),
@@ -42,7 +44,22 @@ function loadWorker(t, { activeTab = tab, screenshot, fetch } = {}) {
     },
   };
 
-  runInNewContext(bundle, { chrome, fetch: fetchAnswer, AbortController, setTimeout: schedule, clearTimeout: clear }, { filename });
+  runInNewContext(bundle, {
+    chrome,
+    fetch: fetchAnswer,
+    AbortController,
+    atob,
+    Blob,
+    btoa,
+    crypto: webcrypto,
+    createImageBitmap: async () => ({ width: 1, height: 1, close() {} }),
+    OffscreenCanvas: class {
+      getContext() { return { drawImage() {} }; }
+      async convertToBlob() { return new Blob(['thumbnail'], { type: 'image/jpeg' }); }
+    },
+    setTimeout: schedule,
+    clearTimeout: clear,
+  }, { filename });
   assert.equal(register.mock.callCount(), 1);
   const [listener] = register.mock.calls[0].arguments;
 
@@ -54,7 +71,7 @@ function loadWorker(t, { activeTab = tab, screenshot, fetch } = {}) {
   }
 
   return {
-    chrome, listeners, readSettings, fetchAnswer, schedule, clear, dispatch,
+    chrome, listeners, readSettings, writeHistory, fetchAnswer, schedule, clear, dispatch,
     async capture() {
       const { keptOpen, reply } = dispatch({ action: 'startCapture' }, popupSender);
       assert.equal(keptOpen, true);
@@ -227,4 +244,8 @@ test('canceling a shared question ID only stops the request from its own documen
   worker.dispatch(cancel, contentSender);
   assert.equal(firstSignal.aborted, false, 'completed requests are removed from the pending map');
   assert.equal(worker.fetchAnswer.mock.callCount(), 2);
+  assert.equal(worker.writeHistory.mock.callCount(), 1);
+  const [{ interactionHistory }] = worker.writeHistory.mock.calls[0].arguments;
+  assert.equal(interactionHistory.length, 1);
+  assert.equal(interactionHistory[0].prompt, question.prompt);
 });

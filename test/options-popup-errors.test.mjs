@@ -31,7 +31,7 @@ async function openPage(t, name, mock, initialValue) {
 }
 
 async function expectStatus(page, message) {
-  const status = page.getByRole('status');
+  const status = page.getByRole('status').and(page.locator('#status'));
   await status.getByText(message, { exact: true }).waitFor();
   assert.equal(await status.innerText(), message);
 }
@@ -132,6 +132,7 @@ function mockPopup() {
   window.fixture = fixture;
   window.close = () => { fixture.closeCalls += 1; };
   window.chrome = {
+    storage: { local: { get: async (defaults) => defaults } },
     runtime: {
       sendMessage(message) {
         fixture.messages.push(message);
@@ -148,7 +149,7 @@ for (const failure of ['rejected message', 'missing reply']) {
   test(`popup recovers from a ${failure} and closes after a successful retry`, async (t) => {
     const page = await openPage(t, 'popup', mockPopup, null);
     const capture = page.getByRole('button', { name: 'Select area' });
-    const status = page.getByRole('status', { includeHidden: true });
+    const status = page.locator('#status');
 
     await capture.click();
     assert.equal(await capture.isDisabled(), true);

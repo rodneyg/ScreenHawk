@@ -40,21 +40,22 @@
 
     <h2>On your device</h2>
     <p>ScreenHawk stores your own OpenAI API key and model choice on this device in <code>chrome.storage.local</code>. The default model is <code>gpt-6-luna</code>. When you start a capture, Chrome captures the visible tab. ScreenHawk crops the image to the area you select on your device.</p>
+    <p>ScreenHawk saves your latest 20 successful questions and answers, their timestamps, and a compressed thumbnail of each selected area in local history on this device.</p>
 
     <h2>What OpenAI receives</h2>
-    <p>When you submit, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. The request includes your chosen model and uses your own API key for authorization. The answer appears only on the page where you started the capture. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
+    <p>When you submit, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. The request includes your chosen model and uses your own API key for authorization. The answer appears on the page where you started the capture and in your local history. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
     <p>Rodney Gainous Jr does not receive, sell, or share your key, screenshots, or questions.</p>
 
     <h2>Chrome permissions</h2>
     <ul id="permissions">
       <li><strong><code>activeTab</code></strong> gives ScreenHawk temporary access to the tab where you start a capture.</li>
       <li><strong><code>scripting</code></strong> loads the selection, question, and answer interface on demand after you start a capture.</li>
-      <li><strong><code>storage</code></strong> saves your OpenAI API key and model choice on this device.</li>
+      <li><strong><code>storage</code></strong> saves your OpenAI API key, model choice, and interaction history on this device.</li>
       <li><strong><code>https://api.openai.com/*</code></strong> lets ScreenHawk send your submitted crop and question directly to OpenAI.</li>
     </ul>
 
     <h2>Remove your data</h2>
-    <p>Remove your key in ScreenHawk’s options or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
+    <p>Delete saved entries in the ScreenHawk popup's History, remove your key in Settings, or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
 
     <h2>Contact</h2>
     <p>Email Rodney Gainous Jr at <a href="mailto:rodney.gainous@gmail.com">rodney.gainous@gmail.com</a> for privacy questions.</p>

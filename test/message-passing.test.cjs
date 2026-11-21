@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { webcrypto } = require('node:crypto');
 const { readFileSync } = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
@@ -21,17 +22,40 @@ const question = {
   image: 'data:image/png;base64,AAAA',
 };
 
+const thumbnailBytes = 'test-thumbnail';
+
 function loadWorker(t, { apiKey = '', fetch } = {}) {
   const registerMessage = t.mock.fn();
   const openOptions = t.mock.fn(async () => {});
   const fetchAnswer = t.mock.fn(fetch ?? (async () => {
     throw new Error('Unexpected fetch');
   }));
-  const readSettings = t.mock.fn(async (defaults) => ({ ...defaults, apiKey }));
+  const stored = { apiKey };
+  const readStorage = t.mock.fn(async (defaults) => ({ ...defaults, ...stored }));
+  const writeStorage = t.mock.fn(async (values) => { Object.assign(stored, values); });
 
   runInNewContext(worker, {
     AbortController,
+    atob,
+    Blob,
+    btoa,
     clearTimeout,
+    createImageBitmap: async () => ({ width: 640, height: 400, close() {} }),
+    crypto: webcrypto,
+    OffscreenCanvas: class {
+      constructor(width, height) {
+        this.width = width;
+        this.height = height;
+      }
+
+      getContext() {
+        return { drawImage() {} };
+      }
+
+      async convertToBlob({ type }) {
+        return new Blob([thumbnailBytes], { type });
+      }
+    },
     setTimeout,
     fetch: fetchAnswer,
     chrome: {
@@ -42,7 +66,7 @@ function loadWorker(t, { apiKey = '', fetch } = {}) {
         openOptionsPage: openOptions,
       },
       storage: {
-        local: { setAccessLevel: async () => {}, get: readSettings },
+        local: { setAccessLevel: async () => {}, get: readStorage, set: writeStorage },
       },
     },
   }, { filename });
@@ -52,7 +76,8 @@ function loadWorker(t, { apiKey = '', fetch } = {}) {
   return {
     openOptions,
     fetchAnswer,
-    readSettings,
+    readStorage,
+    writeStorage,
     sendMessage(message) {
       const { promise: reply, resolve } = Promise.withResolvers();
       const respond = t.mock.fn(resolve);
@@ -75,7 +100,7 @@ test('the worker ignores unknown content messages without a reply or side effect
 
   assert.equal(keepsChannelOpen, undefined);
   await new Promise(setImmediate);
-  for (const mock of [respond, worker.openOptions, worker.fetchAnswer, worker.readSettings]) {
+  for (const mock of [respond, worker.openOptions, worker.fetchAnswer, worker.readStorage, worker.writeStorage]) {
     assert.equal(mock.mock.callCount(), 0);
   }
 });
@@ -109,6 +134,18 @@ test('ask replies with the answer for the submitted prompt and image', { timeout
       { type: 'image_url', image_url: { url: question.image } },
     ],
   }]);
+
+  assert.equal(worker.writeStorage.mock.callCount(), 1);
+  const [saved] = worker.writeStorage.mock.calls[0].arguments;
+  assert.equal(saved.interactionHistory.length, 1);
+  const [{ id, timestamp, prompt, answer, thumbnail }] = saved.interactionHistory;
+  assert.match(id, /^[0-9a-f-]{36}$/);
+  assert.ok(Number.isFinite(timestamp));
+  assert.deepEqual({ prompt, answer, thumbnail }, {
+    prompt: question.prompt,
+    answer: 'The total is $42.',
+    thumbnail: `data:image/jpeg;base64,${btoa(thumbnailBytes)}`,
+  });
 });
 
 test('ask replies with a settings action when the key is missing', { timeout: 2000 }, async (t) => {
