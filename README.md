@@ -2,26 +2,55 @@
 
 ScreenHawk is a Chrome extension for asking questions about an area of the current tab.
 
-## Set up
+## Install unpacked in Chrome
 
-1. Run `npm ci` and `npm run build`.
-2. Open `chrome://extensions` in Chrome 106 or later. Turn on Developer mode and choose **Load unpacked**. Select the `dist` folder.
-3. Open the ScreenHawk toolbar popup and choose **Settings**.
-4. Paste your own OpenAI API key, then choose **Save settings**. The key needs OpenAI API access with available quota and permission to call your model. ScreenHawk defaults to `gpt-6-luna`. You can enter another OpenAI model that accepts image inputs through Chat Completions.
+Use Chrome 106 or later and Node.js 24 with npm. From the repository root, run:
+
+```sh
+npm ci
+npm run build
+```
+
+The build creates `dist/`. Keep the entire folder together. It contains
+`manifest.json` at its root, `background.js`, `content.js`, `popup.html`,
+`popup.js`, `options.html`, `options.js`, `ui.css`, and the `icons/` folder.
+
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and select the built `dist` folder.
+3. In Chrome's **Extensions** menu, open **ScreenHawk**. Pin it if you want it on the toolbar.
+
+### Verify the install
+
+- On `chrome://extensions`, confirm **ScreenHawk** is enabled and check its card for errors.
+- Open the ScreenHawk popup and click **Settings**. Paste your own OpenAI API key and click **Save settings**. Reopen Settings to confirm the key was saved. The key needs API access, available quota, and permission to call your model. The default is `gpt-6-luna`. You can use another OpenAI model that accepts image inputs through Chat Completions.
+- On a regular HTTPS page with non-sensitive content, open the popup and click **Select area**. Drag over part of the page and press **Escape** to check that the overlay closes. To verify a live answer using your API quota, select again, enter a question, and click **Ask**. Confirm the answer appears on that page.
+
+### Troubleshooting
+
+- **Chrome can't load the manifest or a file:** Run `npm run build` again and choose the folder with the built `manifest.json` directly inside it.
+- **Chrome still shows the old build:** After rebuilding, click **Reload** on the ScreenHawk card at `chrome://extensions`, then refresh your test tab.
+- **Select area does nothing:** Switch to a regular web page. Chrome blocks extensions on `chrome://` pages and the Chrome Web Store. For a shortcut that does nothing, check `chrome://extensions/shortcuts`.
+- **Ask shows an API error:** Open **Settings**, check the saved key and model, and review the API account's access and quota.
+
+## Build a ZIP for manual installation
+
+Run `npm run package:zip` after `npm ci` with the `zip` command on your PATH. Extract `build/screenhawk-unpacked.zip` and select the extracted folder containing `manifest.json` when you choose **Load unpacked**.
 
 ## Use it
 
 Choose **Select area** in the toolbar popup, or press **Cmd+Shift+S** on Mac or **Ctrl+Shift+S** elsewhere. Drag over the part of the visible page you want to share. Enter your question and choose **Ask**. The answer appears on the same page.
 
-To draft text for a form, click an editable text area and choose **Draft for field** in the toolbar popup. Review or clear the field label, enter what you want to say, and choose **Generate draft**. Copy the draft into the form when you are ready.
+To draft text for a form, click an editable text area and choose **Draft for field** in the toolbar popup. Click **Help me write** at the top right of the text area. Review or clear the field label, enter what you want to say, and choose **Generate draft**. Review the draft, then choose **Use draft** for an empty field or **Replace field text** for a field with text.
 
 Press **Escape** to close the overlay or cancel selection. Chrome restricts extensions on certain pages, including `chrome://` pages and the Chrome Web Store. If the shortcut is unavailable, check its assignment at `chrome://extensions/shortcuts`.
 
-Choose **Choose field** in the toolbar popup or press **Ctrl+Shift+Z** (**Command+Shift+Z** on Mac). Select a highlighted text field and choose **Help me write**. Review the field label, enter your instructions, and choose **Generate draft**. Choose **Use draft** to insert the text. ScreenHawk leaves submission to you.
+To select a field directly, choose **Choose field** or press **Ctrl+Shift+Z** (**Command+Shift+Z** on Mac). Select a highlighted text area or plain text input, then use **Help me write** to review and insert a draft. Press Escape to cancel field selection.
 
 ## Privacy
 
-Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It does not read the form’s entered values or submit the form. OpenAI handles each request under your API account. ScreenHawk does not send data to the developer, run analytics, or keep a history.
+Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It checks the selected field's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. OpenAI handles each request under your API account. ScreenHawk does not send data to the developer or run analytics.
+
+The toolbar popup's **History** shows your latest 20 successful capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. History is stored on this device.
 
 ## Test
 
@@ -35,5 +64,5 @@ The browser test loads the built extension in headless Chromium. The default run
 
 ## Changelog updates
 
-`changelog/*.md` is the source of truth for the public `/changelog` page. Entries use date, title, status, and prs frontmatter, plus New, Improved, and Fixed bullet groups. Run `npm run changelog:build` after you set an entry to `status: published`. Run `npm run changelog:add` with the GitHub CLI to draft merged pull requests since the latest published date. On merges to main, the Draft changelog Action opens a draft pull request for review.
+`changelog/*.md` is the source of truth for the public `/changelog` page. Entries use date, title, status, and prs frontmatter, plus New, Improved, and Fixed bullet groups. Run `npm run changelog:build` after you set an entry to `status: published`. Run `npm run changelog:add` with the GitHub CLI to draft notes for unlisted pull requests merged to main on or after the latest published entry’s UTC date. When the Draft changelog workflow generates a new entry for a merge, it pushes a `changelog/pr-<number>` branch and tries to open a draft pull request. GitHub Actions currently lacks permission to open those pull requests in this repository. If a draft branch exists, open a pull request from it and review the entry before publishing.
 

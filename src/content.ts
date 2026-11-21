@@ -1,8 +1,8 @@
-import { chooseField, getFieldLabel } from './form-assistance';
+import { chooseField, isEditable, type Field } from './form-assistance';
 
 type Point = { x: number; y: number };
 type Answer =
-  | { ok: true; answer: string }
+  | { ok: true; answer: string; historySaveFailed?: boolean }
   | { ok: false; message: string; showOptions?: boolean };
 
 const global = globalThis as typeof globalThis & { screenHawkInstalled?: boolean };
@@ -11,28 +11,24 @@ let nextQuestion = 0;
 if (!global.screenHawkInstalled) {
   global.screenHawkInstalled = true;
   let closeQuestion: (() => void) | undefined;
-  let closeWand: (() => void) | undefined;
 
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id || sender.tab) return;
-    if (message?.action === 'activateMagicWand') {
+    if (message?.action === 'resetCapture') {
       closeQuestion?.();
-      closeWand?.();
-      closeWand = chooseField(() => String(++nextQuestion));
       respond({ ok: true });
-    } else if (message?.action === 'resetCapture') {
-      closeWand?.();
+    } else if (message?.action === 'activateMagicWand') {
       closeQuestion?.();
+      closeQuestion = chooseField(openDraftButton);
       respond({ ok: true });
     } else if (message?.action === 'startFormDraft') {
-      closeWand?.();
       const field = document.activeElement;
-      if (!(field instanceof HTMLTextAreaElement) || field.readOnly || field.matches(':disabled')) {
+      if (!(field instanceof HTMLTextAreaElement) || !isEditable(field)) {
         respond({ ok: false });
         return;
       }
       closeQuestion?.();
-      closeQuestion = showQuestion({ fieldLabel: getFieldLabel(field) });
+      openDraftButton(field);
       respond({ ok: true });
     } else if (message?.action === 'startSelection') {
       closeQuestion?.();
@@ -43,6 +39,85 @@ if (!global.screenHawkInstalled) {
       return true;
     }
   });
+
+  function openDraftButton(field: Field) {
+    closeQuestion = showDraftButton(field, () => {
+      closeQuestion = showQuestion({ field });
+    });
+  }
+}
+
+function showDraftButton(field: Field, openDraft: () => void) {
+  const lifetime = new AbortController();
+  const host = document.createElement('div');
+  host.id = 'screenhawk-draft-launcher';
+  const root = host.attachShadow({ mode: 'closed' });
+  const styles = new CSSStyleSheet();
+  styles.replaceSync(`
+    :host { all: initial; position: fixed; z-index: 2147483647; }
+    :host([hidden]) { display: none; }
+    button {
+      background: #101b24; color: #a6f6e0; border: 1px solid #55717e; border-radius: 8px;
+      font: 600 13px/1.4 system-ui, sans-serif; min-height: 28px; padding: 3px 9px; cursor: pointer;
+    }
+    button:focus-visible { outline: 2px solid #147f68; outline-offset: 2px; }
+  `);
+  root.adoptedStyleSheets = [styles];
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Help me write';
+  root.append(button);
+  document.documentElement.append(host);
+
+  function close() {
+    lifetime.abort();
+    host.remove();
+  }
+
+  function position() {
+    if (!isEditable(field)) {
+      close();
+      return;
+    }
+    const { top, left, right, bottom, width, height } = field.getBoundingClientRect();
+    host.hidden = !width || !height || right <= 0 || bottom <= 0 || left >= innerWidth || top >= innerHeight;
+    if (host.hidden) return;
+    host.style.left = `${Math.max(0, Math.min(right, innerWidth) - button.offsetWidth - 4)}px`;
+    host.style.top = `${Math.max(0, top) + 4}px`;
+  }
+
+  button.addEventListener('click', (event) => {
+    if (!event.isTrusted || !isEditable(field)) return;
+    close();
+    field.focus({ preventScroll: true });
+    openDraft();
+  });
+  const { signal } = lifetime;
+  window.addEventListener('scroll', position, { capture: true, signal });
+  window.addEventListener('resize', position, { signal });
+  document.addEventListener('focusin', (event) => {
+    if (event.target !== field && event.target !== host) close();
+  }, { signal });
+  button.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    close();
+    field.focus({ preventScroll: true });
+  });
+  position();
+  if (!host.hidden) button.focus({ preventScroll: true });
+  return close;
+}
+
+function getFieldLabel(field: Field) {
+  // A wrapping label can include a textarea's default value or other controls.
+  const label = field.labels?.[0]?.cloneNode(true) as HTMLLabelElement | undefined;
+  label?.querySelectorAll(
+    'input, textarea, select, button, output, script, style, [contenteditable], [hidden], [aria-hidden="true"]',
+  )
+    .forEach((control) => control.remove());
+  return (field.getAttribute('aria-label')?.trim() || label?.textContent?.trim() || field.placeholder)
+    .replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
 async function selectArea(snapshot: string) {
@@ -61,9 +136,11 @@ async function selectArea(snapshot: string) {
   return showQuestion({ preview });
 }
 
-function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: string }) {
+function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }) {
   const preview = 'preview' in context ? context.preview : undefined;
-  const drafting = 'fieldLabel' in context;
+  const field = 'field' in context ? context.field : undefined;
+  const drafting = !!field;
+  const originalValue = field?.value;
   const lifetime = new AbortController();
   const host = document.createElement('div');
   host.id = 'screenhawk-overlay';
@@ -111,6 +188,15 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
       button, a { font: inherit; font-weight: 600; color: #a6f6e0; }
       button { cursor: pointer; background: transparent; border: 0; border-radius: 8px; padding: 8px 13px; }
       button.primary { background: #77f1cf; color: #0b2921; }
+      form button.primary {
+        min-width: 24px; min-height: 24px; padding: 7px 12px;
+        background: rgba(119, 241, 207, .14); color: #a6f6e0;
+        border: 1px solid rgba(119, 241, 207, .34); backdrop-filter: blur(8px);
+      }
+      form button.primary:enabled { opacity: .78; }
+      form button.primary:enabled:is(:hover, :focus-visible) {
+        background: rgba(119, 241, 207, .24); opacity: 1;
+      }
       button:disabled { opacity: .6; cursor: wait; }
       :focus-visible { outline: 2px solid #77f1cf; outline-offset: 3px; }
       #answer { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -131,7 +217,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
         </div>
         <label id="question-label" for="question" class="muted">Question</label>
         <textarea id="question" rows="3" maxlength="2000" required></textarea>
-        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask.</small>
+        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask. Successful answers are saved with a thumbnail in local history.</small>
         <p id="error" role="alert" hidden></p>
         <a id="options" href="#" hidden>Open ScreenHawk settings</a>
         <div class="actions">
@@ -142,7 +228,12 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
       <section hidden>
         <h2 id="answer-title" tabindex="-1">Answer</h2>
         <p id="answer"></p>
-        <div class="actions"><button class="primary" id="close">Close</button></div>
+        <p id="history-note" class="muted" role="status" hidden>ScreenHawk could not save this answer to history.</p>
+        <p id="insert-error" role="alert" hidden></p>
+        <div class="actions">
+          <button type="button" class="primary" id="close">Close</button>
+          <button type="button" class="primary" id="insert" hidden>Use draft</button>
+        </div>
       </section>
     </dialog>`;
   const dialog = root.querySelector('dialog')!;
@@ -160,6 +251,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
   const options = root.querySelector<HTMLAnchorElement>('#options')!;
   const answerPanel = root.querySelector('section')!;
   const heading = root.querySelector<HTMLElement>('#answer-title')!;
+  const answer = root.querySelector<HTMLParagraphElement>('#answer')!;
+  const insert = root.querySelector<HTMLButtonElement>('#insert')!;
   let start: Point | undefined;
   let pointer: number | undefined;
   let crop: string | undefined;
@@ -186,6 +279,29 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
   });
   root.querySelector('#cancel')!.addEventListener('click', close);
   root.querySelector('#close')!.addEventListener('click', close);
+  if (field) {
+    insert.hidden = false;
+    const fieldName = field instanceof HTMLTextAreaElement ? 'text area' : 'text field';
+    if (originalValue) insert.textContent = 'Replace field text';
+    insert.addEventListener('click', (event) => {
+      if (!event.isTrusted) return;
+      const draft = answer.textContent ?? '';
+      const insertError = root.querySelector<HTMLParagraphElement>('#insert-error')!;
+      if (!isEditable(field) || field.value !== originalValue) {
+        insertError.textContent = `The ${fieldName} changed. You can still copy this draft.`;
+      } else if (field.maxLength >= 0 && draft.length > field.maxLength) {
+        insertError.textContent = `This draft is too long for the ${fieldName}. You can still copy it.`;
+      } else {
+        const prototype = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(field, draft);
+        field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText' }));
+        close();
+        field.focus({ preventScroll: true });
+        return;
+      }
+      insertError.hidden = false;
+    });
+  }
   window.addEventListener('resize', () => {
     if (!area.hidden) close();
   }, { signal: lifetime.signal });
@@ -271,7 +387,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
       if (lifetime.signal.aborted) return;
       if (result.ok) {
         crop = undefined;
-        root.querySelector('#answer')!.textContent = result.answer;
+        answer.textContent = result.answer;
+        root.querySelector<HTMLElement>('#history-note')!.hidden = !result.historySaveFailed;
         form.hidden = true;
         answerPanel.hidden = false;
         dialog.setAttribute('aria-label', drafting ? 'Draft' : 'Answer');
@@ -290,13 +407,14 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
     }
   });
 
-  if (drafting) {
-    fieldLabel.value = context.fieldLabel;
+  if (field) {
+    fieldLabel.value = getFieldLabel(field);
     root.querySelector<HTMLElement>('#field-context')!.hidden = false;
     root.querySelector('#prompt-title')!.textContent = 'Draft for field';
     root.querySelector('#question-label')!.textContent = 'What do you want to say?';
+    question.placeholder = 'Describe what you want to write';
     root.querySelector('#sharing')!.textContent = 'ScreenHawk sends the label above and your instructions to OpenAI.';
-    heading.textContent = 'Draft to copy';
+    heading.textContent = 'Review draft';
     submit.textContent = 'Generate draft';
     area.hidden = true;
   }

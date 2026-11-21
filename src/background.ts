@@ -1,4 +1,5 @@
 import { askOpenAI } from './api';
+import { deleteInteraction, saveInteraction } from './history';
 
 const restrictedStorage = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 const starting = new Set<number>();
@@ -42,21 +43,26 @@ async function startCapture(tab?: chrome.tabs.Tab) {
 
 const formError = 'Click an editable text area on the page, then choose Draft for field again.';
 
+const pickerError = 'Open a regular web page to choose a field.';
+
 async function startFormDraft(tab?: chrome.tabs.Tab, action: 'startFormDraft' | 'activateMagicWand' = 'startFormDraft') {
-  const message = action === 'startFormDraft' ? formError : 'Open a regular web page to choose a field.';
+  const message = action === 'startFormDraft' ? formError : pickerError;
   if (tab?.id === undefined || !tab.active || !/^https?:\/\//.test(tab.url ?? '')) {
     return { ok: false, message };
   }
   const [page] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
   const result = await chrome.tabs.sendMessage(tab.id, { action }, { documentId: page.documentId });
-  return result?.ok ? { ok: true } : { ok: false, message: formError };
+  return result?.ok ? { ok: true } : { ok: false, message };
 }
 
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === 'magic-wand') {
     void (async () => {
-      const active = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
-      await startFormDraft(active, 'activateMagicWand');
+      const activeTab = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+      const result = await startFormDraft(activeTab, 'activateMagicWand').catch(() => ({ ok: false, message: pickerError }));
+      if (activeTab?.id !== undefined) {
+        await chrome.action.setTitle({ tabId: activeTab.id, title: result.ok ? 'ScreenHawk' : pickerError });
+      }
     })().catch(() => {});
     return;
   }
@@ -79,9 +85,20 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
       return true;
     }
-    if (message?.action === 'startFormDraft' || message?.action === 'activateMagicWand') {
+    if (message?.action === 'startFormDraft') {
       chrome.tabs.query({ active: true, currentWindow: true })
-        .then(([tab]) => startFormDraft(tab, message.action)).then(respond, () => respond({ ok: false, message: formError }));
+        .then(([tab]) => startFormDraft(tab)).then(respond, () => respond({ ok: false, message: formError }));
+      return true;
+    }
+    if (message?.action === 'activateMagicWand') {
+      chrome.tabs.query({ active: true, currentWindow: true })
+        .then(([tab]) => startFormDraft(tab, 'activateMagicWand'))
+        .then(respond, () => respond({ ok: false, message: pickerError }));
+      return true;
+    }
+    if (message?.action === 'deleteInteraction' && typeof message.id === 'string') {
+      restrictedStorage.then(() => deleteInteraction(message.id))
+        .then(() => respond({ ok: true }), () => respond({ ok: false }));
       return true;
     }
   }
@@ -108,7 +125,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   } else if (message.action === 'draft') {
     if (typeof message.fieldLabel !== 'string' || message.fieldLabel.length > 200) return;
     const context = JSON.stringify({ fieldLabel: message.fieldLabel, instructions: message.prompt });
-    prompt = `Write only a draft for the user's text area. Use the field label as context.\n${context}`;
+    prompt = `Write only a draft for the user's text field. Use the field label as context.\n${context}`;
   } else {
     return;
   }
@@ -118,6 +135,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const timeout = setTimeout(() => controller.abort(), 27000);
   void restrictedStorage
     .then(() => askOpenAI(prompt, image, controller.signal))
+    .then(async (result) => {
+      if (image && result.ok && !controller.signal.aborted) {
+        try {
+          await saveInteraction(prompt, result.answer, image, controller.signal);
+        } catch {
+          return { ...result, historySaveFailed: true };
+        }
+      }
+      return result;
+    })
     .then(respond, () => respond({
       ok: false,
       message: controller.signal.aborted

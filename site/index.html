@@ -20,6 +20,14 @@
   <link rel="icon" href="/assets/icon.png" type="image/png">
   <link rel="stylesheet" href="/styles.css">
   <script src="/store.js" defer></script>
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    window.va('beforeSend', (event) => {
+      const url = new URL(event.url);
+      return { ...event, url: url.origin + url.pathname };
+    });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -41,7 +49,7 @@
         <h1>Ask about what’s on your screen.</h1>
         <p>Select part of a Chrome tab, ask a question, and get an OpenAI answer without leaving the page.</p>
         <div class="actions">
-          <a class="button button-primary" role="link" aria-disabled="true" data-store-url="">Coming soon to the Chrome Web Store</a>
+          <a class="button button-primary" role="link" href="https://chromewebstore.google.com/detail/screenhawk/leppimoaddibhnikopkcooeaehcifbin" data-store-url="https://chromewebstore.google.com/detail/screenhawk/leppimoaddibhnikopkcooeaehcifbin">Add to Chrome</a>
           <a class="button" href="https://github.com/rodneyg/ScreenHawk">Install from source on GitHub</a>
         </div>
       </div>
@@ -69,7 +77,7 @@
       <div class="wrap split">
         <div class="copy">
           <h2>Bring your own OpenAI key</h2>
-          <p>Save your OpenAI API key in ScreenHawk’s options. The key stays in local extension storage. The default model is GPT-4.1 nano. Your browser uses it to send the selected image and your question directly to OpenAI when you submit.</p>
+          <p>Save your OpenAI API key in ScreenHawk’s options. The key stays in local extension storage. The default model is <code>gpt-6-luna</code>. When you submit a question, ScreenHawk sends the selected image and your question directly to OpenAI using your key.</p>
           <h3>What does it cost?</h3>
           <p>You pay OpenAI directly, based on your API usage. The model, image size, and answer length affect the price. See <a href="https://openai.com/api/pricing/">OpenAI API pricing</a>.</p>
         </div>
@@ -107,7 +115,8 @@
       <div class="wrap split install">
         <div class="copy">
           <h2>Install from source</h2>
-          <p>You can try the development build while the Chrome Web Store listing is pending.</p>
+          <p>You can also try the development build from source.</p>
+          <p>Use Chrome 106 or later and Node.js 24 with npm.</p>
           <p><a href="https://github.com/rodneyg/ScreenHawk">View the ScreenHawk repository</a></p>
         </div>
         <div>

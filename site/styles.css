@@ -61,7 +61,7 @@ summary { cursor: pointer; font-weight: 700; padding: .85rem .2rem; }
 details p { padding: 0 .2rem .95rem; color: var(--muted); }
 .install ol { padding-left: 1.3rem; }
 .install li + li { margin-top: .5rem; }
-pre { margin: 1rem 0 1.2rem; padding: 1rem 1.2rem; border-radius: .7rem; overflow-x: auto; color: #eff7ea; background: var(--dark); font-size: .9rem; }
+pre { margin: 1rem 0 1.2rem; padding: 1rem 1.2rem; border-radius: .7rem; white-space: pre-wrap; color: #eff7ea; background: var(--dark); font-size: .9rem; }
 code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
 .article { width: min(100% - 3rem, 45rem); padding-block: clamp(2.5rem, 8vw, 5rem); }
 .article h1 { font-size: clamp(2.75rem, 7vw, 5rem); }

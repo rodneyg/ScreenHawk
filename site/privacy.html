@@ -19,6 +19,14 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/assets/icon.png" type="image/png">
   <link rel="stylesheet" href="/styles.css">
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    window.va('beforeSend', (event) => {
+      const url = new URL(event.url);
+      return { ...event, url: url.origin + url.pathname };
+    });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -36,25 +44,29 @@
   <main id="main" class="wrap article">
     <p class="kicker">Effective November 20, 2026</p>
     <h1>Privacy policy</h1>
-    <p>Rodney Gainous Jr publishes ScreenHawk. ScreenHawk has no account, developer server, or analytics. This website uses no analytics or cookies.</p>
+    <p>Rodney Gainous Jr publishes ScreenHawk. The ScreenHawk Chrome extension has no account, developer server, or telemetry.</p>
+
+    <h2>Marketing website analytics</h2>
+    <p>This website uses <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel Web Analytics</a> for anonymous, aggregate page views and Chrome Web Store link clicks. Analytics uses no cookies. Tracked page URLs omit query strings and fragments. Clicks include only a fixed referral category. Website analytics never receives extension questions, screenshots, or API keys.</p>
 
     <h2>On your device</h2>
     <p>ScreenHawk stores your own OpenAI API key and model choice on this device in <code>chrome.storage.local</code>. The default model is <code>gpt-6-luna</code>. When you start a capture, Chrome captures the visible tab. ScreenHawk crops the image to the area you select on your device.</p>
+    <p>ScreenHawk saves your latest 20 successful questions and answers, their timestamps, and a compressed thumbnail of each selected area in local history on this device.</p>
 
     <h2>What OpenAI receives</h2>
-    <p>When you choose Ask, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. When you choose Generate draft, it sends only the label shown in the dialog and the instructions you type. It does not read or submit the form’s entered values. The request includes your chosen model and uses your own API key for authorization. The answer or draft appears only on the page where you started the request. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
+    <p>When you choose Ask, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. When you choose Generate draft, it sends only the label shown in the dialog and the instructions you type. It checks the selected field's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. The request includes your chosen model and uses your own API key for authorization. The answer or draft appears on the page where you started the request. Successful capture answers also appear in local history. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
     <p>Rodney Gainous Jr does not receive, sell, or share your key, screenshots, or questions.</p>
 
     <h2>Chrome permissions</h2>
     <ul id="permissions">
       <li><strong><code>activeTab</code></strong> gives ScreenHawk temporary access to the tab where you start a capture or draft.</li>
       <li><strong><code>scripting</code></strong> loads the capture or draft interface on demand.</li>
-      <li><strong><code>storage</code></strong> saves your OpenAI API key and model choice on this device.</li>
+      <li><strong><code>storage</code></strong> saves your OpenAI API key, model choice, and capture history on this device.</li>
       <li><strong><code>https://api.openai.com/*</code></strong> lets ScreenHawk send your submitted questions and draft instructions directly to OpenAI.</li>
     </ul>
 
     <h2>Remove your data</h2>
-    <p>Remove your key in ScreenHawk’s options or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
+    <p>Delete saved entries in the ScreenHawk popup's History, remove your key in Settings, or uninstall the extension to remove its local storage. You can also revoke the key from your OpenAI account. Contact OpenAI about any data it has already processed.</p>
 
     <h2>Contact</h2>
     <p>Email Rodney Gainous Jr at <a href="mailto:rodney.gainous@gmail.com">rodney.gainous@gmail.com</a> for privacy questions.</p>

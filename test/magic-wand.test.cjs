@@ -13,6 +13,11 @@ async function dispatchShortcut(activeTab) {
   let command;
   const chrome = {
     commands: { onCommand: { addListener(listener) { command = listener; } } },
+    action: {
+      async setTitle(details) {
+        calls.push(['title', structuredClone(details)]);
+      },
+    },
     runtime: { onMessage: { addListener() {} } },
     storage: { local: { async setAccessLevel() {} } },
     tabs: {
@@ -49,9 +54,13 @@ test('magic wand injects and targets the active document without capturing a scr
     query,
     ['inject', { target: { tabId: 42 }, files: ['content.js'] }],
     ['send', 42, { action: 'activateMagicWand' }, { documentId: 'document-1' }],
+    ['title', { tabId: 42, title: 'ScreenHawk' }],
   ]);
 });
 
 test('magic wand skips restricted pages', async () => {
-  assert.deepEqual(await dispatchShortcut({ ...tab, url: 'chrome://settings/' }), [query]);
+  assert.deepEqual(await dispatchShortcut({ ...tab, url: 'chrome://settings/' }), [
+    query,
+    ['title', { tabId: 42, title: 'Open a regular web page to choose a field.' }],
+  ]);
 });

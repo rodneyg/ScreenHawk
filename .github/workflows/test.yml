@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Test store drafts
+        run: node --test test/store-drafts.test.cjs
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - run: npm run test:package-zip
