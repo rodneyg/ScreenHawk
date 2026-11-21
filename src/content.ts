@@ -8,22 +8,42 @@ let nextQuestion = 0;
 
 if (!global.screenHawkInstalled) {
   global.screenHawkInstalled = true;
-  let closeCapture: (() => void) | undefined;
+  let closeQuestion: (() => void) | undefined;
 
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id || sender.tab) return;
     if (message?.action === 'resetCapture') {
-      closeCapture?.();
+      closeQuestion?.();
+      respond({ ok: true });
+    } else if (message?.action === 'startFormDraft') {
+      const field = document.activeElement;
+      if (!(field instanceof HTMLTextAreaElement) || field.readOnly || field.matches(':disabled')) {
+        respond({ ok: false });
+        return;
+      }
+      closeQuestion?.();
+      closeQuestion = showQuestion({ fieldLabel: getFieldLabel(field) });
       respond({ ok: true });
     } else if (message?.action === 'startSelection') {
-      closeCapture?.();
+      closeQuestion?.();
       selectArea(message.image).then((close) => {
-        closeCapture = close;
+        closeQuestion = close;
         respond({ ok: true });
       }, () => respond({ ok: false }));
       return true;
     }
   });
+}
+
+function getFieldLabel(field: HTMLTextAreaElement) {
+  // A wrapping label can include a textarea's default value or other controls.
+  const label = field.labels?.[0]?.cloneNode(true) as HTMLLabelElement | undefined;
+  label?.querySelectorAll(
+    'input, textarea, select, button, output, script, style, [contenteditable], [hidden], [aria-hidden="true"]',
+  )
+    .forEach((control) => control.remove());
+  return (field.getAttribute('aria-label')?.trim() || label?.textContent?.trim() || field.placeholder)
+    .replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
 async function selectArea(snapshot: string) {
@@ -39,6 +59,12 @@ async function selectArea(snapshot: string) {
   } finally {
     bitmap.close();
   }
+  return showQuestion({ preview });
+}
+
+function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: string }) {
+  const preview = 'preview' in context ? context.preview : undefined;
+  const drafting = 'fieldLabel' in context;
   const lifetime = new AbortController();
   const host = document.createElement('div');
   host.id = 'screenhawk-overlay';
@@ -77,10 +103,11 @@ async function selectArea(snapshot: string) {
       h2 { font-size: 21px; line-height: 1.2; margin: 0 0 12px; }
       p { margin: 0 0 14px; }
       small, .muted { color: #aac2cc; }
-      textarea {
+      textarea, #field-label {
         background: #0a141d; border: 1px solid #55717e; border-radius: 10px; padding: 11px;
         width: 100%; min-height: 78px; resize: vertical; color: inherit; font: inherit;
       }
+      #field-label { min-height: auto; margin-bottom: 12px; }
       .actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
       button, a { font: inherit; font-weight: 600; color: #a6f6e0; }
       button { cursor: pointer; background: transparent; border: 0; border-radius: 8px; padding: 8px 13px; }
@@ -107,10 +134,14 @@ async function selectArea(snapshot: string) {
         <div id="hint"><strong>Drag to select a page area</strong><br><small>Escape to cancel</small></div>
       </div>
       <form hidden>
-        <h2>Ask about this area</h2>
-        <label for="question" class="muted">Question</label>
+        <h2 id="prompt-title">Ask about this area</h2>
+        <div id="field-context" hidden>
+          <label for="field-label" class="muted">Field label (optional)</label>
+          <input id="field-label" type="text" maxlength="200" autocomplete="off">
+        </div>
+        <label id="question-label" for="question" class="muted">Question</label>
         <textarea id="question" rows="3" maxlength="2000" required></textarea>
-        <small>Ask sends your selection and question to OpenAI. Successful answers are saved with a thumbnail in local history.</small>
+        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask. Successful answers are saved with a thumbnail in local history.</small>
         <p id="error" role="alert" hidden></p>
         <a id="options" href="#" hidden>Open ScreenHawk settings</a>
         <div class="actions">
@@ -127,8 +158,11 @@ async function selectArea(snapshot: string) {
     </dialog>`;
   const dialog = root.querySelector('dialog')!;
   const area = root.querySelector<HTMLDivElement>('#area')!;
-  preview.setAttribute('aria-hidden', 'true');
-  area.prepend(preview);
+  if (preview) {
+    preview.setAttribute('aria-hidden', 'true');
+    area.prepend(preview);
+  }
+  const fieldLabel = root.querySelector<HTMLInputElement>('#field-label')!;
   const box = root.querySelector<HTMLDivElement>('#box')!;
   const form = root.querySelector('form')!;
   const question = root.querySelector('textarea')!;
@@ -145,7 +179,7 @@ async function selectArea(snapshot: string) {
   function close() {
     lifetime.abort();
     if (requestId) void chrome.runtime.sendMessage({ action: 'cancelQuestion', id: requestId }).catch(() => {});
-    preview.width = 0;
+    if (preview) preview.width = 0;
     crop = undefined;
     if (dialog.open) dialog.close();
     host.remove();
@@ -173,6 +207,14 @@ async function selectArea(snapshot: string) {
       if (!state?.ok) showError('Open settings from the ScreenHawk toolbar menu.', true);
     }).catch(() => showError('Open settings from the ScreenHawk toolbar menu.', true));
   });
+
+  function showPrompt(title: string) {
+    area.hidden = true;
+    form.hidden = false;
+    dialog.classList.remove('selecting');
+    dialog.setAttribute('aria-label', title);
+    question.focus();
+  }
 
   function bounds(event: PointerEvent, origin: Point) {
     const { left, top, width, height } = area.getBoundingClientRect();
@@ -205,16 +247,12 @@ async function selectArea(snapshot: string) {
     box.hidden = true;
   });
   area.addEventListener('pointerup', (event) => {
-    if (!event.isTrusted || !start || pointer !== event.pointerId) return;
+    if (!event.isTrusted || !preview || !start || pointer !== event.pointerId) return;
     const rect = bounds(event, start);
     if (rect.width < 12 || rect.height < 12) return;
     const viewport = area.getBoundingClientRect();
-    area.hidden = true;
-    form.hidden = false;
-    dialog.classList.remove('selecting');
-    dialog.setAttribute('aria-label', 'Ask about this area');
+    showPrompt('Ask about this area');
     submit.disabled = true;
-    question.focus();
     try {
       crop = cropImage(preview, rect, viewport);
       submit.disabled = false;
@@ -228,15 +266,19 @@ async function selectArea(snapshot: string) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const prompt = question.value.trim();
-    if (!event.isTrusted || !prompt || !crop || requestId) return;
+    if (!event.isTrusted || !prompt || (!drafting && !crop) || requestId) return;
     requestId = String(++nextQuestion);
+    const request = drafting
+      ? { action: 'draft', id: requestId, prompt, fieldLabel: fieldLabel.value.trim() }
+      : { action: 'ask', id: requestId, prompt, image: crop };
     submit.disabled = true;
     question.readOnly = true;
-    submit.textContent = 'Asking…';
+    fieldLabel.readOnly = true;
+    submit.textContent = drafting ? 'Drafting…' : 'Asking…';
     error.hidden = true;
     options.hidden = true;
     try {
-      const result: Answer = await chrome.runtime.sendMessage({ action: 'ask', id: requestId, image: crop, prompt });
+      const result: Answer = await chrome.runtime.sendMessage(request);
       if (lifetime.signal.aborted) return;
       if (result.ok) {
         crop = undefined;
@@ -244,7 +286,7 @@ async function selectArea(snapshot: string) {
         root.querySelector<HTMLElement>('#history-note')!.hidden = !result.historySaveFailed;
         form.hidden = true;
         answerPanel.hidden = false;
-        dialog.setAttribute('aria-label', 'Answer');
+        dialog.setAttribute('aria-label', drafting ? 'Draft' : 'Answer');
         heading.focus();
       } else {
         showError(result.message, result.showOptions);
@@ -255,12 +297,24 @@ async function selectArea(snapshot: string) {
       requestId = undefined;
       submit.disabled = false;
       question.readOnly = false;
-      submit.textContent = 'Ask';
+      fieldLabel.readOnly = false;
+      submit.textContent = drafting ? 'Generate draft' : 'Ask';
     }
   });
 
+  if (drafting) {
+    fieldLabel.value = context.fieldLabel;
+    root.querySelector<HTMLElement>('#field-context')!.hidden = false;
+    root.querySelector('#prompt-title')!.textContent = 'Draft for field';
+    root.querySelector('#question-label')!.textContent = 'What do you want to say?';
+    root.querySelector('#sharing')!.textContent = 'ScreenHawk sends the label above and your instructions to OpenAI.';
+    heading.textContent = 'Draft to copy';
+    submit.textContent = 'Generate draft';
+    area.hidden = true;
+  }
   document.documentElement.append(host);
   dialog.showModal();
+  if (drafting) showPrompt('Draft for field');
   return close;
 }
 

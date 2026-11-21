@@ -43,15 +43,15 @@
     <p>ScreenHawk saves your latest 20 successful questions and answers, their timestamps, and a compressed thumbnail of each selected area in local history on this device.</p>
 
     <h2>What OpenAI receives</h2>
-    <p>When you submit, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. The request includes your chosen model and uses your own API key for authorization. The answer appears on the page where you started the capture and in your local history. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
+    <p>When you choose Ask, ScreenHawk sends only the selected crop and your typed question as content directly to <code>api.openai.com</code>. When you choose Generate draft, it sends only the label shown in the dialog and the instructions you type. It does not read or submit the form’s entered values. The request includes your chosen model and uses your own API key for authorization. The answer or draft appears on the page where you started the request. Successful capture answers also appear in local history. <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> applies to processing by OpenAI.</p>
     <p>Rodney Gainous Jr does not receive, sell, or share your key, screenshots, or questions.</p>
 
     <h2>Chrome permissions</h2>
     <ul id="permissions">
-      <li><strong><code>activeTab</code></strong> gives ScreenHawk temporary access to the tab where you start a capture.</li>
-      <li><strong><code>scripting</code></strong> loads the selection, question, and answer interface on demand after you start a capture.</li>
-      <li><strong><code>storage</code></strong> saves your OpenAI API key, model choice, and interaction history on this device.</li>
-      <li><strong><code>https://api.openai.com/*</code></strong> lets ScreenHawk send your submitted crop and question directly to OpenAI.</li>
+      <li><strong><code>activeTab</code></strong> gives ScreenHawk temporary access to the tab where you start a capture or draft.</li>
+      <li><strong><code>scripting</code></strong> loads the capture or draft interface on demand.</li>
+      <li><strong><code>storage</code></strong> saves your OpenAI API key, model choice, and capture history on this device.</li>
+      <li><strong><code>https://api.openai.com/*</code></strong> lets ScreenHawk send your submitted questions and draft instructions directly to OpenAI.</li>
     </ul>
 
     <h2>Remove your data</h2>

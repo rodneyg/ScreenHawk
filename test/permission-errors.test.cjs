@@ -49,12 +49,14 @@ function loadWorker(t, { executeScript, captureVisibleTab }) {
 function loadPopup(t, sendMessage) {
   const registerClick = t.mock.fn();
   const capture = { disabled: false, addEventListener: registerClick };
+  const draft = { disabled: false, addEventListener: t.mock.fn() };
   const status = { textContent: 'Previous error' };
   const settings = { addEventListener: t.mock.fn() };
   const close = t.mock.fn();
   const historyStatus = { textContent: '' };
   const elements = {
     '#capture': capture,
+    '#draft': draft,
     '#status': status,
     '#settings': settings,
     '#history-list': { replaceChildren: t.mock.fn() },
@@ -70,7 +72,7 @@ function loadPopup(t, sendMessage) {
   });
   const [event, click] = registerClick.mock.calls[0].arguments;
   assert.equal(event, 'click');
-  return { capture, status, close, click, historyStatus };
+  return { capture, draft, status, close, click, historyStatus };
 }
 
 test('missing host permission stops capture before messaging the tab or taking a screenshot', async (t) => {
@@ -118,16 +120,18 @@ test('the popup shows the worker error and lets the user retry', async (t) => {
     executeScript: async () => { throw new Error('Missing host permission'); },
     captureVisibleTab: async () => {},
   });
-  const { capture, status, close, click, historyStatus } = loadPopup(t, sendMessage);
+  const { capture, draft, status, close, click, historyStatus } = loadPopup(t, sendMessage);
 
-  const completion = click();
+  click();
   assert.equal(capture.disabled, true);
+  assert.equal(draft.disabled, true);
   assert.equal(status.textContent, '');
-  await completion;
+  await new Promise(setImmediate);
 
   assert.equal(historyStatus.textContent, 'No saved interactions.');
   assert.equal(status.textContent, captureError);
   assert.equal(capture.disabled, false);
+  assert.equal(draft.disabled, false);
   assert.equal(close.mock.callCount(), 0);
 });
 
@@ -136,7 +140,8 @@ test('the popup shows a fallback when runtime messaging fails', async (t) => {
     throw new Error('Could not establish connection');
   });
 
-  await click();
+  click();
+  await new Promise(setImmediate);
 
   assert.equal(status.textContent, 'Could not start ScreenHawk. Try again.');
   assert.equal(capture.disabled, false);

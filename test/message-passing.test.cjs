@@ -62,6 +62,7 @@ function loadWorker(t, { apiKey = '', fetch } = {}) {
       commands: { onCommand: { addListener() {} } },
       runtime: {
         id: sender.id,
+        getURL: (file) => `chrome-extension://${sender.id}/${file}`,
         onMessage: { addListener: registerMessage },
         openOptionsPage: openOptions,
       },

@@ -22,6 +22,8 @@ button:disabled { opacity: .6; cursor: wait; }
 .actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .popup #settings { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 8px; }
 fieldset button { justify-self: start; }
+.popup .secondary { background: #21353f; color: #a6f6e0; }
+.popup #settings { display: inline-block; margin-top: 12px; }
 [role=status] { margin: 0; color: #b5f4e2; }
 [role=status]:empty { display: none; }
 .popup [role=status], .options [role=status] { margin-top: 10px; }
