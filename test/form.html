@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Experience form</title>
+<style nonce="screenhawk-fixture">
+  :root { background: #eef5f4; color: #102b36; font: 16px/1.5 system-ui, sans-serif; }
+  main { margin: 70px auto; max-width: 600px; padding: 36px; border-radius: 18px; background: white; }
+  h1 { margin: 0 0 24px; }
+  label { display: block; margin: 0 0 20px; }
+  textarea, input, button { font: inherit; }
+  textarea, input { display: block; box-sizing: border-box; width: 100%; margin-top: 4px; padding: 8px; }
+  button { background: #10453e; color: white; border: 0; border-radius: 6px; padding: 8px 16px; }
+</style>
+<main>
+  <h1>Experience form</h1>
+  <form action="/submitted">
+    <label>Role<input id="role" name="role" value="fixture-other-field"></label>
+    <label>Password<input name="password" type="password" value="fixture-password"></label>
+    <label>Describe your best job experience<textarea id="experience" name="fixture-form-name" rows="4">fixture-default-value</textarea></label>
+    <button type="submit">Submit form</button>
+  </form>
+</main>
