@@ -6,6 +6,7 @@
     "test": "npm run test:changelog && npm run build && npm run test:failures && node test/e2e.mjs",
     "build": "webpack --mode production",
     "pretest": "node --test test/prompt.test.cjs test/onboarding.test.cjs",
+    "posttest": "node --test test/permission-errors.test.cjs",
     "e2e:real": "npm run build && node test/e2e.mjs --real",
     "postbuild": "npm run check:icons",
     "check:icons": "node scripts/check-icons.cjs",
@@ -14,7 +15,7 @@
     "changelog:build": "node scripts/changelog.js build",
     "changelog:add": "node scripts/changelog.js add",
     "test:changelog": "node --test scripts/changelog.test.cjs && npm run changelog:build && git diff --exit-code -- site/changelog.html",
-    "test:failures": "node --test test/background-failures.test.cjs test/ui-failures.test.mjs test/options-popup-errors.test.mjs test/permission-errors.test.cjs"
+    "test:failures": "node --test test/background-failures.test.cjs test/ui-failures.test.mjs test/options-popup-errors.test.mjs test/message-passing.test.cjs"
   },
   "keywords": [],
   "author": "Rodney Gainous Jr",
