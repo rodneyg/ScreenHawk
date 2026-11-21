@@ -415,10 +415,20 @@ try {
     assert.ok(entry.thumbnail.length < image.length, 'fixture thumbnail should be smaller than its upload');
     assert.deepEqual(await worker.evaluate(async () => Object.keys(await chrome.storage.sync.get())), []);
 
+    await worker.evaluate((entry) => chrome.storage.local.set({
+      interactionHistory: [
+        { ...entry, id: 'invalid-date', timestamp: 1e16 },
+        entry,
+        null,
+        { id: 'incomplete' },
+      ],
+    }), entry);
     const history = await openHistory();
     historyVideo = history.video();
     const saved = history.locator('#history-list li');
-    await saved.locator('time').waitFor();
+    await history.waitForFunction(() => document.querySelector('#history-status').textContent !== 'Loading history…');
+    await history.screenshot({ scale: 'css', path: path.join(evidence, 'history-initial.png') });
+    assert.equal(await saved.count(), 1, 'malformed rows must not hide a valid saved answer');
     assert.equal(await saved.locator('time').getAttribute('datetime'), new Date(entry.timestamp).toISOString());
     const thumbnail = await saved.getByRole('img', { name: 'Selected area' }).evaluate(async (image) => {
       await image.decode();
@@ -443,7 +453,7 @@ try {
     assert.equal(await reopened.locator('#history-list li').count(), 0);
     assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.local.get('interactionHistory')).interactionHistory), []);
     await reopened.close();
-    console.log('PASS saved success only, local JPEG thumbnail and time, reopened answer, persistent deletion');
+    console.log('PASS saved success only, local JPEG and time, valid entry amid malformed records, reopened answer, persistent deletion');
   }
 
   if (!real) {
