@@ -17,12 +17,14 @@ if (!global.screenHawkInstalled) {
       respond({ ok: true });
     } else if (message?.action === 'startFormDraft') {
       const field = document.activeElement;
-      if (!(field instanceof HTMLTextAreaElement) || field.readOnly || field.matches(':disabled')) {
+      if (!(field instanceof HTMLTextAreaElement) || !isEditable(field)) {
         respond({ ok: false });
         return;
       }
       closeQuestion?.();
-      closeQuestion = showQuestion({ fieldLabel: getFieldLabel(field) });
+      closeQuestion = showDraftButton(field, () => {
+        closeQuestion = showQuestion({ field });
+      });
       respond({ ok: true });
     } else if (message?.action === 'startSelection') {
       closeQuestion?.();
@@ -33,6 +35,72 @@ if (!global.screenHawkInstalled) {
       return true;
     }
   });
+}
+
+function isEditable(field: HTMLTextAreaElement) {
+  return field.isConnected && !field.readOnly && !field.matches(':disabled');
+}
+
+function showDraftButton(field: HTMLTextAreaElement, openDraft: () => void) {
+  const lifetime = new AbortController();
+  const host = document.createElement('div');
+  host.id = 'screenhawk-draft-launcher';
+  const root = host.attachShadow({ mode: 'closed' });
+  const styles = new CSSStyleSheet();
+  styles.replaceSync(`
+    :host { all: initial; position: fixed; z-index: 2147483647; }
+    :host([hidden]) { display: none; }
+    button {
+      background: #101b24; color: #a6f6e0; border: 1px solid #55717e; border-radius: 8px;
+      font: 600 13px/1.4 system-ui, sans-serif; min-height: 28px; padding: 3px 9px; cursor: pointer;
+    }
+    button:focus-visible { outline: 2px solid #147f68; outline-offset: 2px; }
+  `);
+  root.adoptedStyleSheets = [styles];
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Help me write';
+  root.append(button);
+  document.documentElement.append(host);
+
+  function close() {
+    lifetime.abort();
+    host.remove();
+  }
+
+  function position() {
+    if (!isEditable(field)) {
+      close();
+      return;
+    }
+    const { top, left, right, bottom, width, height } = field.getBoundingClientRect();
+    host.hidden = !width || !height || right <= 0 || bottom <= 0 || left >= innerWidth || top >= innerHeight;
+    if (host.hidden) return;
+    host.style.left = `${Math.max(0, Math.min(right, innerWidth) - button.offsetWidth - 4)}px`;
+    host.style.top = `${Math.max(0, top) + 4}px`;
+  }
+
+  button.addEventListener('click', (event) => {
+    if (!event.isTrusted || !isEditable(field)) return;
+    close();
+    field.focus({ preventScroll: true });
+    openDraft();
+  });
+  const { signal } = lifetime;
+  window.addEventListener('scroll', position, { capture: true, signal });
+  window.addEventListener('resize', position, { signal });
+  document.addEventListener('focusin', (event) => {
+    if (event.target !== field && event.target !== host) close();
+  }, { signal });
+  button.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    close();
+    field.focus({ preventScroll: true });
+  });
+  position();
+  if (!host.hidden) button.focus({ preventScroll: true });
+  return close;
 }
 
 function getFieldLabel(field: HTMLTextAreaElement) {
@@ -62,9 +130,11 @@ async function selectArea(snapshot: string) {
   return showQuestion({ preview });
 }
 
-function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: string }) {
+function showQuestion(context: { preview: HTMLCanvasElement } | { field: HTMLTextAreaElement }) {
   const preview = 'preview' in context ? context.preview : undefined;
-  const drafting = 'fieldLabel' in context;
+  const field = 'field' in context ? context.field : undefined;
+  const drafting = !!field;
+  const originalValue = field?.value;
   const lifetime = new AbortController();
   const host = document.createElement('div');
   host.id = 'screenhawk-overlay';
@@ -153,7 +223,11 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
         <h2 id="answer-title" tabindex="-1">Answer</h2>
         <p id="answer"></p>
         <p id="history-note" class="muted" role="status" hidden>ScreenHawk could not save this answer to history.</p>
-        <div class="actions"><button class="primary" id="close">Close</button></div>
+        <p id="insert-error" role="alert" hidden></p>
+        <div class="actions">
+          <button type="button" class="primary" id="close">Close</button>
+          <button type="button" class="primary" id="insert" hidden>Use draft</button>
+        </div>
       </section>
     </dialog>`;
   const dialog = root.querySelector('dialog')!;
@@ -171,6 +245,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
   const options = root.querySelector<HTMLAnchorElement>('#options')!;
   const answerPanel = root.querySelector('section')!;
   const heading = root.querySelector<HTMLElement>('#answer-title')!;
+  const answer = root.querySelector<HTMLParagraphElement>('#answer')!;
+  const insert = root.querySelector<HTMLButtonElement>('#insert')!;
   let start: Point | undefined;
   let pointer: number | undefined;
   let crop: string | undefined;
@@ -197,6 +273,27 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
   });
   root.querySelector('#cancel')!.addEventListener('click', close);
   root.querySelector('#close')!.addEventListener('click', close);
+  if (field) {
+    insert.hidden = false;
+    if (originalValue) insert.textContent = 'Replace field text';
+    insert.addEventListener('click', (event) => {
+      if (!event.isTrusted) return;
+      const draft = answer.textContent ?? '';
+      const insertError = root.querySelector<HTMLParagraphElement>('#insert-error')!;
+      if (!isEditable(field) || field.value !== originalValue) {
+        insertError.textContent = 'The text area changed. You can still copy this draft.';
+      } else if (field.maxLength >= 0 && draft.length > field.maxLength) {
+        insertError.textContent = 'This draft is too long for the text area. You can still copy it.';
+      } else {
+        field.value = draft;
+        field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText' }));
+        close();
+        field.focus({ preventScroll: true });
+        return;
+      }
+      insertError.hidden = false;
+    });
+  }
   window.addEventListener('resize', () => {
     if (!area.hidden) close();
   }, { signal: lifetime.signal });
@@ -282,7 +379,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
       if (lifetime.signal.aborted) return;
       if (result.ok) {
         crop = undefined;
-        root.querySelector('#answer')!.textContent = result.answer;
+        answer.textContent = result.answer;
         root.querySelector<HTMLElement>('#history-note')!.hidden = !result.historySaveFailed;
         form.hidden = true;
         answerPanel.hidden = false;
@@ -302,13 +399,14 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { fieldLabel: st
     }
   });
 
-  if (drafting) {
-    fieldLabel.value = context.fieldLabel;
+  if (field) {
+    fieldLabel.value = getFieldLabel(field);
     root.querySelector<HTMLElement>('#field-context')!.hidden = false;
     root.querySelector('#prompt-title')!.textContent = 'Draft for field';
     root.querySelector('#question-label')!.textContent = 'What do you want to say?';
+    question.placeholder = 'Describe what you want to write';
     root.querySelector('#sharing')!.textContent = 'ScreenHawk sends the label above and your instructions to OpenAI.';
-    heading.textContent = 'Draft to copy';
+    heading.textContent = 'Review draft';
     submit.textContent = 'Generate draft';
     area.hidden = true;
   }
