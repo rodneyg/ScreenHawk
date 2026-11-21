@@ -2,6 +2,10 @@
 
 ScreenHawk is a Chrome extension for asking questions about an area of the current tab.
 
+## Install from the Chrome Web Store
+
+[Add ScreenHawk to Chrome](https://chromewebstore.google.com/detail/screenhawk/leppimoaddibhnikopkcooeaehcifbin). For a local development build, follow the unpacked installation steps below.
+
 ## Install unpacked in Chrome
 
 Use Chrome 106 or later and Node.js 24 with npm. From the repository root, run:
@@ -46,9 +50,9 @@ Press **Escape** to close the overlay or cancel selection. Chrome restricts exte
 
 ## Privacy
 
-Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It checks the selected text area's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. OpenAI handles each request under your API account. ScreenHawk does not send data to the developer or run analytics.
+Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, ScreenHawk sends only the label shown in the dialog and the instructions you type. It checks the selected text area's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. OpenAI handles each request under your API account. The Chrome extension has no developer server or telemetry. The ScreenHawk website uses Vercel Web Analytics for aggregate page views and Chrome Web Store link clicks. The [website privacy policy](site/privacy.html) explains what those events contain.
 
-The toolbar popup's **History** shows your latest 20 successful capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. History is stored on this device.
+The toolbar popup's **History** shows up to 20 recent successful capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. History is stored on this device.
 
 ## Test
 
