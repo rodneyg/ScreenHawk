@@ -149,7 +149,7 @@ for (const failure of ['rejected message', 'missing reply']) {
   test(`popup recovers from a ${failure} and closes after a successful retry`, async (t) => {
     const page = await openPage(t, 'popup', mockPopup, null);
     const capture = page.getByRole('button', { name: 'Select area' });
-    const status = page.getByRole('status', { includeHidden: true }).and(page.locator('#status'));
+    const status = page.locator('#status');
 
     await capture.click();
     assert.equal(await capture.isDisabled(), true);
