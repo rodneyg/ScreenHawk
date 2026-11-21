@@ -3,9 +3,9 @@
   "version": "1.0.1",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:changelog && npm run build && npm run test:failures && node test/e2e.mjs",
+    "test": "npm run test:changelog && npm run build && npm run test:failures && node --test test/shortcuts.test.cjs && node test/e2e.mjs",
     "build": "webpack --mode production",
-    "pretest": "node --test test/prompt.test.cjs test/onboarding.test.cjs",
+    "pretest": "node --test test/prompt.test.cjs test/onboarding.test.cjs test/settings.test.cjs",
     "e2e:real": "npm run build && node test/e2e.mjs --real",
     "postbuild": "npm run check:icons",
     "check:icons": "node scripts/check-icons.cjs",
