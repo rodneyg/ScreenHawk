@@ -32,6 +32,9 @@ let video;
 let server;
 let stage = 'start local server';
 const requests = [];
+const mockRequestReceived = Promise.withResolvers();
+const mockAnswerRelease = Promise.withResolvers();
+let mockAnswerSent = false;
 
 function assertCrop(image, area, dpr) {
   assert.ok(image.startsWith('data:image/png;base64,'), 'vision image is a PNG data URL');
@@ -62,7 +65,11 @@ try {
       const body = JSON.parse(Buffer.concat(chunks));
       requests.push({ body, authorization: req.headers.authorization });
       const rejected = req.headers.authorization !== `Bearer ${mockKey}`;
-      await delay(350);
+      if (!rejected) {
+        mockRequestReceived.resolve();
+        await mockAnswerRelease.promise;
+        mockAnswerSent = true;
+      }
       res.writeHead(rejected ? 401 : 200, { 'Content-Type': 'application/json' }).end(JSON.stringify(
         rejected ? { error: { message: 'Rejected by test server' } } :
           { choices: [{ message: { content: 'The invoice total is $73.19.' } }] },
@@ -225,6 +232,12 @@ try {
     assert.deepEqual(await worker.evaluate(async () => Object.keys(await chrome.storage.sync.get())), []);
   }
 
+  async function assertAnswer() {
+    await control('#answer:not(:empty), #error:not([hidden])').waitFor({ timeout: 30000 });
+    if (await control('#error').isVisible()) throw new Error(await control('#error').innerText());
+    assert.match(await control('#answer').innerText(), /73\.19/, 'invoice total missing from answer');
+  }
+
   stage = 'verify missing-key handling and options';
   await capture();
   await selectArea();
@@ -278,21 +291,42 @@ try {
   await selectArea(path.join(evidence, '01-area-select.png'));
   await page.screenshot({ scale: 'css', path: path.join(evidence, '02-prompt.png') });
   await delay(550);
+  const initiatingTab = !real && await worker.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    return { id: tab.id, windowId: tab.windowId, url: tab.url };
+  });
   await control('button[type=submit]').click();
   if (!real) {
-    // The answer must follow the initiating document, even if another tab becomes active.
-    const anotherTab = await context.newPage();
-    await anotherTab.goto(`${origin}/another-tab`);
-    await control('#answer').waitFor({ state: 'visible' });
-    assert.equal(await anotherTab.locator('#screenhawk-overlay').count(), 0);
-    await anotherTab.close();
+    stage = 'verify delivery while the second tab is active';
+    assert.equal(initiatingTab.url, page.url(), 'the initiating page must start as the active tab');
+    await Promise.race([
+      mockRequestReceived.promise,
+      delay(7000, undefined, { ref: false }).then(() => assert.fail('the mock API did not receive the question')),
+    ]);
+    const secondTab = await context.newPage();
+    await secondTab.goto(`${origin}/another-tab`);
+    await secondTab.bringToFront();
+    const tabs = await worker.evaluate((windowId) => chrome.tabs.query({ windowId }), initiatingTab.windowId);
+    assert.equal(tabs.length, 2);
+    const other = tabs.find(({ id }) => id !== initiatingTab.id);
+    assert.equal(other?.active, true, 'Chromium must report the second tab as active');
+    assert.equal(mockAnswerSent, false, 'mock response was sent before the second tab became active');
+    assert.equal(await control('#answer').isVisible(), false, 'answer is hidden before release');
+    mockAnswerRelease.resolve();
+
+    await assertAnswer();
+    const [activeTab] = await worker.evaluate((windowId) => chrome.tabs.query({ active: true, windowId }), initiatingTab.windowId);
+    assert.equal(activeTab?.id, other.id, 'the second tab must stay active through answer delivery');
+    assert.equal(await secondTab.locator('#screenhawk-overlay').count(), 0, 'the second tab must not receive an overlay');
+    console.log('PASS two-tab timing | response held until second tab active | answer reached initiating tab only');
+    await secondTab.close();
     await page.bringToFront();
+  } else {
+    stage = 'assert that answer contains 73.19';
+    await assertAnswer();
   }
 
-  stage = 'assert that answer contains 73.19';
-  await control('section:not([hidden]) #answer, #error:not([hidden])').waitFor({ timeout: 30000 });
-  if (await control('#error').isVisible()) throw new Error(await control('#error').innerText());
-  assert.ok((await control('#answer').innerText()).includes('73.19'), 'invoice total missing from answer');
+  stage = 'record the answer';
   await page.screenshot({ scale: 'css', path: path.join(evidence, '03-answer.png') });
   await delay(850);
 
@@ -338,6 +372,7 @@ try {
   console.error(`FAIL ${stage}: ${message}`);
   process.exitCode = 1;
 } finally {
+  mockAnswerRelease.resolve();
   try {
     const videoPath = await video?.path();
     if (context) await context.close();
