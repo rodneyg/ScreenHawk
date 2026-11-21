@@ -569,6 +569,7 @@ try {
 
   if (!real) {
     stage = 'verify text-only form draft on the original page';
+    await worker.evaluate((apiKey) => chrome.storage.local.set({ apiKey }), mockKey);
     await page.goto(`${origin}/form`);
     const field = page.locator('#experience');
     const value = 'fixture-current-value';
