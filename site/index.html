@@ -20,6 +20,14 @@
   <link rel="icon" href="/assets/icon.png" type="image/png">
   <link rel="stylesheet" href="/styles.css">
   <script src="/store.js" defer></script>
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    window.va('beforeSend', (event) => {
+      const url = new URL(event.url);
+      return { ...event, url: url.origin + url.pathname };
+    });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
