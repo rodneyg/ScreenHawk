@@ -144,7 +144,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: HTMLTex
       :host { all: initial; color-scheme: dark; }
       * { box-sizing: border-box; }
       dialog {
-        color: #eef6f7; background: #101b24; border: 1px solid #35515f; border-radius: 18px;
+        color: #eef6f7; background: rgb(16 27 36 / 94%); border: 1px solid #35515f; border-radius: 18px;
+        backdrop-filter: blur(10px);
         font: 15px/1.5 system-ui, sans-serif; box-shadow: 0 18px 56px #020a1399;
         padding: 24px; width: min(460px, calc(100vw - 32px)); outline: none;
       }
@@ -152,7 +153,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: HTMLTex
       dialog.selecting {
         position: fixed; inset: 0; margin: 0; width: 100%; height: 100%;
         max-width: none; max-height: none; border: 0; padding: 0; border-radius: 0;
-        background: transparent; box-shadow: none; overflow: hidden;
+        background: transparent; backdrop-filter: none; box-shadow: none; overflow: hidden;
       }
       dialog.selecting::backdrop { background: transparent; }
       #area { position: absolute; inset: 0; touch-action: none; cursor: crosshair; overflow: hidden; }
@@ -180,8 +181,13 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: HTMLTex
       #field-label { min-height: auto; margin-bottom: 12px; }
       .actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
       button, a { font: inherit; font-weight: 600; color: #a6f6e0; }
-      button { cursor: pointer; background: transparent; border: 0; border-radius: 8px; padding: 8px 13px; }
-      button.primary { background: #77f1cf; color: #0b2921; }
+      button {
+        cursor: pointer; background: rgb(170 194 204 / 15%); color: #eef6f7;
+        border: 1px solid rgb(170 194 204 / 40%); border-radius: 8px; padding: 8px 13px;
+      }
+      button:not(.primary):hover:not(:disabled) { background: rgb(170 194 204 / 25%); }
+      button.primary { background: rgb(119 241 207 / 20%); color: #d4fff3; border-color: rgb(119 241 207 / 45%); }
+      section button.primary:hover:not(:disabled) { background: rgb(119 241 207 / 30%); }
       form button.primary {
         min-width: 24px; min-height: 24px; padding: 7px 12px;
         background: rgba(119, 241, 207, .14); color: #a6f6e0;
