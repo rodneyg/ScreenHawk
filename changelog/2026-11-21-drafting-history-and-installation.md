@@ -6,7 +6,7 @@ prs: 9, 13, 14, 15, 19, 20, 25, 28, 29, 34, 35, 36, 37, 38
 ---
 ## New
 - Draft text from a selected text area with the Help me write button. Review the draft before inserting it. ScreenHawk checks that the field is still editable, its text has not changed, and the draft fits its length limit.
-- Open History in the toolbar popup to review or delete your latest 20 successful capture answers. Questions, answers, timestamps, and thumbnails are stored on your device.
+- Open History in the toolbar popup to review or delete up to 20 saved capture answers. Questions, answers, timestamps, and thumbnails are stored on your device.
 - Install from the Chrome Web Store using the link on the homepage, or build a ZIP for manual installation.
 
 ## Improved

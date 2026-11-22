@@ -11,16 +11,16 @@ The manifest declares no standing permission to access sites other than the Open
 
 The toolbar action and capture shortcut grant `activeTab` access. The service
 worker uses it to read the active tab's URL and call
-`chrome.tabs.captureVisibleTab`. It uses `scripting` to inject the packaged
-`content.js` overlay into that tab.
+`chrome.tabs.captureVisibleTab` for area questions. It uses `scripting` to
+inject the packaged `content.js` overlay for area questions and drafts.
 
 The options page saves the key and model with `chrome.storage.local.set`.
-The service worker reads them before sending a question.
+The service worker reads them before sending a question or draft request.
 
 The OpenAI entry is a host permission. It allows the extension service worker
 to make a cross-origin request. Chrome applies the grant to the HTTPS host.
 ScreenHawk sends the request to `/v1/chat/completions` when the user submits
-a question and an API key is configured.
+a question or requests a draft and an API key is configured.
 
 When changing a manifest permission, update the table with its current reason.
 `npm test` checks that the table matches the manifest.

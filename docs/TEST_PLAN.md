@@ -9,7 +9,7 @@ Based on T-2020's test gap map and T-2030's timing probe. Covered items run unde
 
 ## Background worker (`src/background.ts`)
 
-- **Open**. PR #21 tests Chrome rejecting script injection or `chrome.tabs.captureVisibleTab`, including cleanup and retry after a failed screenshot.
+- **Covered**. `test/permission-errors.test.cjs` checks denied injection, cleanup after a failed screenshot, and the ability to retry.
 - **Covered**. A `chrome://` or `file://` page is rejected before injection or capture. Chrome Web Store permission errors use the injection failure path tested in PR #21.
 - **Covered**. Switching away and back during capture discards the screenshot, removes the listener, and allows a new capture. No API request is made.
 - **Covered**. A duplicate start is rejected without taking a second screenshot. Capture can start again when the first completes.
@@ -28,12 +28,13 @@ Based on T-2020's test gap map and T-2030's timing probe. Covered items run unde
 ## Options and popup (`src/options.ts` and `src/popup.ts`)
 
 - **Covered**. Options shows recovery instructions on storage read or write failure. A failed read keeps the form disabled. A failed write re-enables it for a retry.
-- **Open**. PR #21 tests popup messaging failure, capture button disabling, and recovery.
+- **Covered**. `test/permission-errors.test.cjs` checks worker and runtime messaging failures, disabled capture controls during the request, and recovery.
 
 ## API (`src/api.ts`)
 
-- **Open**. T-1643 covers HTTP errors, malformed responses, network failure, and key redaction.
+- **Covered**. `test/prompt.test.cjs` checks HTTP errors, invalid response bodies, network failure, and key redaction.
 
 ## Store links (`site/store.js`)
 
-- **Open**. The empty and configured store URL states have no automated coverage.
+- **Covered**. `test/site-analytics.test.mjs` checks the configured Store link and click events when the analytics script is missing or blocked.
+- **Open**. The empty Store URL fallback has no automated coverage.
