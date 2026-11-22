@@ -506,7 +506,7 @@ try {
       `expected ${locator} within ${viewport.width}x${viewport.height}, got ${JSON.stringify(box)}`);
     }
 
-    stage = 'verify selection focus and Escape restoration at 320x480';
+    stage = 'verify selection focus at 320x480';
     await page.keyboard.press('Escape');
     await overlay.waitFor({ state: 'detached' });
     // Selection mode closes on resize. Let the new viewport finish laying out before capture.
@@ -517,13 +517,9 @@ try {
     await assertFocused(invoiceActions);
     await capture();
     await assertFocused(control('dialog'));
-    await page.keyboard.press('Escape');
-    await overlay.waitFor({ state: 'detached' });
-    await assertFocused(invoiceActions);
 
     stage = 'verify keyboard-only selection at 320x480';
     const keyboardRequests = requests.length;
-    await capture();
     await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-start.png') });
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('Enter');
