@@ -521,6 +521,29 @@ try {
     await overlay.waitFor({ state: 'detached' });
     await assertFocused(invoiceActions);
 
+    stage = 'verify keyboard-only selection at 320x480';
+    const keyboardRequests = requests.length;
+    await capture();
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-start.png') });
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    assert.equal(await control('#question').isVisible(), false, 'an empty selection stays open');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    await control('#box').waitFor({ state: 'visible' });
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-selection.png') });
+    await page.keyboard.press('Space');
+    await control('#question').waitFor();
+    await assertFocused(control('#question'));
+    assert.ok(await control('button[type=submit]').isEnabled());
+    assert.equal(requests.length, keyboardRequests, 'selection alone sends no request');
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-question.png') });
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    await assertFocused(invoiceActions);
+    console.log('PASS keyboard-only crop at 320x480, question focus, and no request before Ask');
+
     stage = 'verify touch drag and cancellation at 320x480';
     const priorRequests = requests.length;
     await worker.evaluate(() => chrome.storage.local.remove('apiKey'));
