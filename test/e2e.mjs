@@ -317,10 +317,14 @@ try {
   await page.keyboard.press('Escape');
   await overlay.waitFor({ state: 'detached' });
 
-  stage = 'verify Escape cancels area selection and sends no request';
+  stage = 'verify Escape cancels area selection and restores focus without a request';
+  const invoiceActions = page.getByRole('button', { name: 'Invoice actions' });
+  await invoiceActions.focus();
   await capture();
   await page.keyboard.press('Escape');
   await overlay.waitFor({ state: 'detached' });
+  assert.ok(await invoiceActions.evaluate((button) => button.matches(':focus')),
+    'Escape during area selection restores focus to the invoice button');
   assert.equal(requests.length, real ? 0 : 1);
   await delay(550);
 
@@ -491,7 +495,6 @@ try {
 
   if (!real) {
     const narrow = { width: 320, height: 480 };
-    const invoiceActions = page.getByRole('button', { name: 'Invoice actions' });
 
     async function assertFocused(locator) {
       assert.ok(await locator.evaluate((element) => element === element.getRootNode().activeElement),
@@ -535,10 +538,29 @@ try {
     assert.ok(await control('button[type=submit]').isEnabled());
     assert.equal(requests.length, keyboardRequests, 'selection alone sends no request');
     await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-question.png') });
+
+    stage = 'verify keyboard submission and answer layout at 320x480';
+    await page.keyboard.type(question);
+    await page.keyboard.press('Tab');
+    await assertFocused(control('#cancel'));
+    await page.keyboard.press('Tab');
+    await assertFocused(control('button[type=submit]'));
+    await page.keyboard.press('Enter');
+    await assertAnswer();
+    assert.equal(requests.length, keyboardRequests + 1, 'keyboard submission sends one request');
+
+    const answerTitle = control('#answer-title');
+    const closeAnswer = control('#close');
+    await assertFocused(answerTitle);
+    for (const locator of [answerTitle, control('#answer'), closeAnswer]) {
+      await assertInViewport(locator, narrow);
+    }
+    await page.keyboard.press('Tab');
+    await assertFocused(closeAnswer);
     await page.keyboard.press('Escape');
     await overlay.waitFor({ state: 'detached' });
     await assertFocused(invoiceActions);
-    console.log('PASS keyboard-only crop at 320x480, question focus, and no request before Ask');
+    console.log('PASS keyboard-only crop and submission at 320x480, answer layout, focus, and Escape restoration');
 
     stage = 'verify touch drag and cancellation at 320x480';
     const priorRequests = requests.length;
@@ -640,6 +662,8 @@ try {
 
   if (!real) {
     stage = 'verify text-only form draft on the original page';
+    const captureHistory = await worker.evaluate(async () =>
+      (await chrome.storage.local.get('interactionHistory')).interactionHistory);
     await page.setViewportSize(size);
     await worker.evaluate((apiKey) => chrome.storage.local.set({ apiKey }), mockKey);
     await page.goto(`${origin}/form`);
@@ -720,7 +744,7 @@ try {
     assert.deepEqual(JSON.parse(contextLine), { fieldLabel: label, instructions });
     assert.equal(extra, undefined);
     const draftHistory = await worker.evaluate(() => chrome.storage.local.get('interactionHistory'));
-    assert.deepEqual(draftHistory.interactionHistory, [], 'text drafts are not saved to capture history');
+    assert.deepEqual(draftHistory.interactionHistory, captureHistory, 'text drafts are not saved to capture history');
     assert.equal(await field.inputValue(), value);
     assert.equal(await control('#insert').innerText(), 'Replace field text');
     await field.evaluate((input) => { input.value = 'updated by the website'; });
