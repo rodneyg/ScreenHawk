@@ -7,6 +7,7 @@ import { chromium } from 'playwright';
 const site = new URL('../site/', import.meta.url);
 const pages = ['index', 'privacy', 'support', 'terms', 'changelog'];
 const analyticsPath = '/_vercel/insights/script.js';
+const storeListing = 'https://chromewebstore.google.com/detail/screenhawk/leppimoaddibhnikopkcooeaehcifbin';
 
 test('marketing analytics keeps tracking data minimal and the Store link usable', async (t) => {
   const assets = new Map(await Promise.all(
@@ -71,9 +72,10 @@ test('marketing analytics keeps tracking data minimal and the Store link usable'
         .map((args) => Array.from(args));
       sessionStorage.setItem('queuedEvents', JSON.stringify(window.queuedEvents));
     }, { once: true }));
-    const href = await link.getAttribute('href');
-    assert.match(href, /^https:\/\/chromewebstore\.google\.com\/detail\/screenhawk\//);
-    await Promise.all([page.waitForURL(href), link.click()]);
+    const destination = new URL(storeListing);
+    if (source !== 'direct') destination.searchParams.set('utm_source', source);
+    assert.equal(await link.getAttribute('href'), destination.href);
+    await Promise.all([page.waitForURL(destination.href), link.click()]);
     await page.goBack();
 
     const queued = await page.evaluate(() => JSON.parse(sessionStorage.getItem('queuedEvents')));

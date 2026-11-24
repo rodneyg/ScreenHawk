@@ -18,6 +18,8 @@ Start from the ScreenHawk toolbar button or press Command+Shift+S on Mac or Ctrl
 
 Add your own OpenAI API key in ScreenHawk Settings. Use the default model or choose an OpenAI model that accepts images. When you click Ask, ScreenHawk sends the selected image crop and your question directly to OpenAI using your key.
 
+For a form draft, focus an editable text area and choose Draft for field in the popup, or use Choose field to select an editable text area or plain text input. Click Help me write. Review the field label, add instructions, and review the generated text before inserting it. You submit the form yourself.
+
 ## Category
 
 Tools

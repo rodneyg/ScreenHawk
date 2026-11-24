@@ -172,9 +172,14 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
         position: absolute; z-index: 1; pointer-events: none; border: 2px solid #77f1cf; border-radius: 5px;
         box-shadow: 0 0 0 150vmax #04101870;
       }
+      #cursor {
+        position: absolute; z-index: 3; pointer-events: none; width: 15px; height: 15px;
+        border: 2px solid #77f1cf; border-radius: 50%; box-shadow: 0 0 0 2px #101b24;
+        transform: translate(-50%, -50%);
+      }
       #hint {
         position: absolute; z-index: 2; pointer-events: none; top: 24px; left: 50%; transform: translateX(-50%);
-        min-width: min(330px, 90vw); text-align: center; color: #eef6f7; background: #101b24;
+        width: min(360px, 90vw); text-align: center; color: #eef6f7; background: #101b24;
         padding: 10px 14px; border: 1px solid #35515f; border-radius: 12px;
       }
       h2 { font-size: 21px; line-height: 1.2; margin: 0 0 12px; }
@@ -210,10 +215,15 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
   `);
   root.adoptedStyleSheets = [styles];
   root.innerHTML = `
-    <dialog class="selecting" aria-label="Select a page area">
+    <dialog class="selecting" aria-label="Select a page area" aria-describedby="hint">
       <div id="area">
-        <div id="box" hidden></div>
-        <div id="hint"><strong>Drag to select a page area</strong><br><small>Escape to cancel</small></div>
+        <div id="box" aria-hidden="true" hidden></div>
+        <div id="cursor" aria-hidden="true" hidden></div>
+        <div id="hint">
+          <strong>Drag to select a page area</strong><br>
+          <small>Or use arrow keys to move. Press Enter or Space at each corner. Hold Shift for fine movement. Escape to cancel.</small>
+          <div id="selection-status" role="status"></div>
+        </div>
       </div>
       <form hidden>
         <h2 id="prompt-title">Ask about this area</h2>
@@ -250,6 +260,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
   }
   const fieldLabel = root.querySelector<HTMLInputElement>('#field-label')!;
   const box = root.querySelector<HTMLDivElement>('#box')!;
+  const cursor = root.querySelector<HTMLDivElement>('#cursor')!;
+  const selectionStatus = root.querySelector<HTMLDivElement>('#selection-status')!;
   const form = root.querySelector('form')!;
   const question = root.querySelector('textarea')!;
   const submit = form.querySelector<HTMLButtonElement>('[type=submit]')!;
@@ -261,6 +273,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
   const insert = root.querySelector<HTMLButtonElement>('#insert')!;
   let start: Point | undefined;
   let pointer: number | undefined;
+  let keyboardPoint: Point | undefined;
+  let keyboardStart: Point | undefined;
   let crop: string | undefined;
   let requestId: string | undefined;
 
@@ -324,43 +338,34 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
     form.hidden = false;
     dialog.classList.remove('selecting');
     dialog.setAttribute('aria-label', title);
+    dialog.removeAttribute('aria-describedby');
     question.focus();
   }
 
-  function bounds(event: PointerEvent, origin: Point) {
-    const { left, top, width, height } = area.getBoundingClientRect();
-    const x = Math.max(0, Math.min(event.clientX - left, width));
-    const y = Math.max(0, Math.min(event.clientY - top, height));
+  function rectangle(first: Point, second: Point) {
     return {
-      x: Math.min(x, origin.x), y: Math.min(y, origin.y),
-      width: Math.abs(x - origin.x), height: Math.abs(y - origin.y),
+      x: Math.min(first.x, second.x), y: Math.min(first.y, second.y),
+      width: Math.abs(first.x - second.x), height: Math.abs(first.y - second.y),
     };
   }
 
-  area.addEventListener('pointerdown', (event) => {
-    if (!event.isTrusted || event.button !== 0 || pointer !== undefined) return;
-    const { left, top } = area.getBoundingClientRect();
-    start = { x: event.clientX - left, y: event.clientY - top };
-    pointer = event.pointerId;
-    area.setPointerCapture(pointer);
-  });
-  area.addEventListener('pointermove', (event) => {
-    if (!event.isTrusted || !start || pointer !== event.pointerId) return;
-    const rect = bounds(event, start);
+  function pointerPoint(event: PointerEvent) {
+    const { left, top, width, height } = area.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(event.clientX - left, width)),
+      y: Math.max(0, Math.min(event.clientY - top, height)),
+    };
+  }
+
+  function drawBox(rect: ReturnType<typeof rectangle>) {
     Object.assign(box.style, {
       left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.width}px`, height: `${rect.height}px`,
     });
     box.hidden = false;
-  });
-  area.addEventListener('lostpointercapture', () => {
-    start = undefined;
-    pointer = undefined;
-    box.hidden = true;
-  });
-  area.addEventListener('pointerup', (event) => {
-    if (!event.isTrusted || !preview || !start || pointer !== event.pointerId) return;
-    const rect = bounds(event, start);
-    if (rect.width < 12 || rect.height < 12) return;
+  }
+
+  function finishSelection(rect: ReturnType<typeof rectangle>) {
+    if (!preview || rect.width < 12 || rect.height < 12) return false;
     const viewport = area.getBoundingClientRect();
     showPrompt('Ask about this area');
     submit.disabled = true;
@@ -372,6 +377,70 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
     } finally {
       preview.width = 0;
     }
+    return true;
+  }
+
+  const direction = new Map<string, Point>([
+    ['ArrowLeft', { x: -1, y: 0 }], ['ArrowRight', { x: 1, y: 0 }],
+    ['ArrowUp', { x: 0, y: -1 }], ['ArrowDown', { x: 0, y: 1 }],
+  ]);
+  dialog.addEventListener('keydown', (event) => {
+    if (!event.isTrusted || area.hidden || pointer !== undefined || event.altKey || event.ctrlKey || event.metaKey) return;
+    const movement = direction.get(event.key);
+    const mark = event.key === 'Enter' || event.key === ' ';
+    if (!movement && !mark) return;
+    event.preventDefault();
+    if (mark && event.repeat) return;
+
+    const { width, height } = area.getBoundingClientRect();
+    keyboardPoint ??= { x: Math.floor(width / 2), y: Math.floor(height / 2) };
+    if (movement) {
+      const step = event.shiftKey ? 1 : 16;
+      keyboardPoint.x = Math.max(0, Math.min(keyboardPoint.x + movement.x * step, width));
+      keyboardPoint.y = Math.max(0, Math.min(keyboardPoint.y + movement.y * step, height));
+    }
+    cursor.style.left = `${keyboardPoint.x}px`;
+    cursor.style.top = `${keyboardPoint.y}px`;
+    cursor.hidden = false;
+
+    if (!keyboardStart) {
+      if (mark) {
+        keyboardStart = { ...keyboardPoint };
+        selectionStatus.textContent = 'First corner set. Move to the opposite corner.';
+      }
+      return;
+    }
+
+    const rect = rectangle(keyboardStart, keyboardPoint);
+    drawBox(rect);
+    if (mark && !finishSelection(rect)) {
+      selectionStatus.textContent = 'Selection is too small. Move farther and try again.';
+    }
+  });
+
+  area.addEventListener('pointerdown', (event) => {
+    if (!event.isTrusted || event.button !== 0 || pointer !== undefined) return;
+    keyboardPoint = undefined;
+    keyboardStart = undefined;
+    selectionStatus.textContent = '';
+    cursor.hidden = true;
+    box.hidden = true;
+    start = pointerPoint(event);
+    pointer = event.pointerId;
+    area.setPointerCapture(pointer);
+  });
+  area.addEventListener('pointermove', (event) => {
+    if (!event.isTrusted || !start || pointer !== event.pointerId) return;
+    drawBox(rectangle(start, pointerPoint(event)));
+  });
+  area.addEventListener('lostpointercapture', () => {
+    start = undefined;
+    pointer = undefined;
+    box.hidden = true;
+  });
+  area.addEventListener('pointerup', (event) => {
+    if (!event.isTrusted || !start || pointer !== event.pointerId) return;
+    finishSelection(rectangle(start, pointerPoint(event)));
   });
 
   form.addEventListener('submit', async (event) => {
