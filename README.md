@@ -42,7 +42,7 @@ Run `npm run package:zip` after `npm ci` with the `zip` command on your PATH. Ex
 
 ## Use it
 
-Choose **Select area** in the toolbar popup, or press **Cmd+Shift+S** on Mac or **Ctrl+Shift+S** elsewhere. Drag over the part of the visible page you want to share. Enter your question and choose **Ask**. The answer appears on the same page.
+Choose **Select area** in the toolbar popup, or press **Cmd+Shift+S** on Mac or **Ctrl+Shift+S** elsewhere. Drag over the part of the visible page you want to share. In the development build, you can also use the arrow keys to move the cursor. Press **Enter** or **Space** at each corner and hold **Shift** for finer movement. Enter your question and choose **Ask**. The answer appears on the same page.
 
 To draft text for a form, click an editable text area and choose **Draft for field** in the toolbar popup. Click **Help me write** at the top right of the text area. Review or clear the field label, enter what you want to say, and choose **Generate draft**. Review the draft, then choose **Use draft** for an empty field or **Replace field text** for a field with text.
 

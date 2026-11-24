@@ -18,6 +18,7 @@ Based on T-2020's test gap map and T-2030's timing probe. Covered items run unde
 
 ## Content overlay (`src/content.ts`)
 
+- **Covered**. At 320 × 480, the keyboard-only capture in `test/e2e.mjs` keeps the selector open for an empty selection. It checks focus on the question after marking both corners, submits by keyboard, and confirms Escape restores focus on the page.
 - **Covered**. A tiny selection keeps the selection tool open, and a new drag can make a valid selection.
 - **Covered**. A crop failure shows recovery instructions, disables Ask, and sends no question.
 - **Covered**. A failed Ask message shows an error and restores the form.
