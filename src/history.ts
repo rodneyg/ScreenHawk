@@ -29,10 +29,13 @@ export async function readHistory(): Promise<HistoryEntry[]> {
 }
 
 // Keep saves and deletes from overwriting each other in the extension worker.
-function updateHistory(update: (entries: HistoryEntry[]) => HistoryEntry[]) {
+type HistoryUpdate = HistoryEntry[] | undefined;
+
+function updateHistory(update: (entries: HistoryEntry[]) => HistoryUpdate | Promise<HistoryUpdate>) {
   const write = writes.then(async () => {
     const entries = await readHistory();
-    await chrome.storage.local.set({ [key]: update(entries) });
+    const updated = await update(entries);
+    if (updated) await chrome.storage.local.set({ [key]: updated });
   });
   writes = write.catch(() => {});
   return write;
@@ -41,18 +44,23 @@ function updateHistory(update: (entries: HistoryEntry[]) => HistoryEntry[]) {
 export async function saveInteraction(
   prompt: string, answer: string, image: string, signal: AbortSignal, source: { url?: string; title?: string },
 ) {
-  const { screenshot, thumbnail } = await compressImages(image);
   if (signal.aborted) return;
-  await updateHistory((entries) => signal.aborted ? entries : [{
-    id: crypto.randomUUID(),
-    timestamp: Date.now(),
-    prompt,
-    answer,
-    thumbnail,
-    screenshot,
-    url: source.url?.slice(0, 4096),
-    title: source.title?.slice(0, 500),
-  }, ...entries].slice(0, limit));
+  // Queue the save before compression so a later clear also removes this capture.
+  await updateHistory(async (entries) => {
+    if (signal.aborted) return;
+    const { screenshot, thumbnail } = await compressImages(image);
+    if (signal.aborted) return;
+    return [{
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      prompt,
+      answer,
+      thumbnail,
+      screenshot,
+      url: source.url?.slice(0, 4096),
+      title: source.title?.slice(0, 500),
+    }, ...entries].slice(0, limit);
+  });
 }
 
 export function deleteInteraction(id: string) {
