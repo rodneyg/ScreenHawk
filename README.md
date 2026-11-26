@@ -1,6 +1,6 @@
 # ScreenHawk
 
-ScreenHawk is a Chrome extension for asking questions about an area of the current tab.
+ScreenHawk is a Chrome extension for asking questions about an area of the current tab and drafting text for form fields.
 
 ## Install from the Chrome Web Store
 
@@ -15,9 +15,7 @@ npm ci
 npm run build
 ```
 
-The build creates `dist/`. Keep the entire folder together. It contains
-`manifest.json` at its root, `background.js`, `content.js`, `popup.html`,
-`popup.js`, `options.html`, `options.js`, `ui.css`, and the `icons/` folder.
+The build creates `dist/` with `manifest.json` at its root. Keep the entire folder together, including the scripts, popup and Settings pages, history viewer, styles, and icons.
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and select the built `dist` folder.
@@ -54,7 +52,7 @@ To select a field directly, choose **Choose field** or press **Ctrl+Shift+Z** (*
 
 Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, the only page or user text ScreenHawk sends is the reviewed field label and the instructions you type. It checks the selected field's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. OpenAI handles each request under your API account. The Chrome extension has no developer server or telemetry. The ScreenHawk website uses Vercel Web Analytics for aggregate page views and Chrome Web Store link clicks. The [website privacy policy](site/privacy.html) explains what those events contain.
 
-The toolbar popup's **History** shows up to 50 saved capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. Choose **Open details** to view the selection and open its source page when available. Choose **Clear history** to delete all entries. History is stored on this device and excludes form drafts.
+The toolbar popup's **History** shows up to 50 saved captures. Each entry stores the question, answer, timestamp, and compressed selection images on this device, along with the source page title and URL when available. Open a question to review or delete the entry. Choose **Open details** to view the saved selection and open its source page when available. Choose **Clear history** to delete all entries. History excludes form drafts.
 
 ## Test
 
