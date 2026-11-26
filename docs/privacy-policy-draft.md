@@ -2,7 +2,7 @@
 
 **Draft for review**
 
-Rodney Gainous Jr publishes ScreenHawk, a Chrome extension for asking questions about a selected area of a web page and drafting text for an editable text area. The extension has no ScreenHawk account, developer server, or analytics.
+Rodney Gainous Jr publishes ScreenHawk, a Chrome extension for asking questions about a selected area of a web page and drafting text for an editable text area or plain text input. The extension has no ScreenHawk account, developer server, or analytics.
 
 ## What stays in Chrome
 

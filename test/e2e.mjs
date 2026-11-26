@@ -639,6 +639,7 @@ try {
     for (const locator of [
       popup.getByRole('button', { name: 'Select area' }),
       popup.getByRole('button', { name: 'Draft for field' }),
+      popup.getByRole('button', { name: 'Choose field' }),
       popup.getByRole('link', { name: 'Settings' }),
     ]) {
       await popup.keyboard.press('Tab');
@@ -654,6 +655,8 @@ try {
   const commands = await worker.evaluate(() => chrome.commands.getAll());
   const shortcut = commands.find(({ name }) => name === 'capture-screenshot');
   assert.ok(shortcut?.shortcut.includes('S'), 'Chrome did not register the capture shortcut');
+  assert.ok(commands.some(({ name, shortcut }) => name === 'magic-wand' && shortcut.includes('Z')),
+    'Chrome did not register the field picker shortcut');
   const shortcutsPage = await context.newPage();
   await shortcutsPage.goto('chrome://extensions/shortcuts');
   await shortcutsPage.getByRole('heading', { name: 'ScreenHawk', exact: true, level: 2 }).waitFor();
@@ -777,6 +780,76 @@ try {
     assert.equal(page.url(), `${origin}/form`);
     await delay(1000);
     console.log('PASS text area button, text-only draft, key guard, stale value guard, and explicit insertion without form submission');
+
+    stage = 'verify manual field selection and inline insertion';
+    const wand = page.locator('#screenhawk-field-helper');
+    const launcher = page.locator('#screenhawk-draft-launcher');
+    const roleField = page.locator('#role');
+    const password = page.locator('input[type=password]');
+    const pickerRequestCount = requests.length;
+    const outline = (locator) => locator.evaluate((input) => input.style.outlineStyle);
+
+    async function openPicker() {
+      const sessionId = await clickToolbarPopup('#wand');
+      try {
+        await wand.waitFor({ state: 'attached' });
+      } finally {
+        await browserCDP.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+      }
+    }
+
+    await openPicker();
+    await page.keyboard.press('Escape');
+    await wand.waitFor({ state: 'detached' });
+    assert.equal(await outline(roleField), '', 'cancel restores the original outline');
+    assert.equal(requests.length, pickerRequestCount);
+
+    await openPicker();
+    assert.equal(await outline(field), 'solid');
+    assert.equal(await outline(roleField), 'solid');
+    assert.equal(await outline(password), '');
+    await password.click();
+    assert.equal(await launcher.count(), 0, 'password fields cannot be selected');
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'field-picker.png') });
+    if (process.env.SCREENHAWK_PICKER_MEDIA) await delay(1100);
+
+    await roleField.click();
+    await wand.waitFor({ state: 'detached' });
+    assert.equal(await outline(roleField), '', 'selection restores the original outline');
+    await inspectOverlay('#screenhawk-draft-launcher');
+    const help = control('button');
+    assert.equal(await help.innerText(), 'Help me write');
+    if (process.env.SCREENHAWK_PICKER_MEDIA) await delay(950);
+    await help.click();
+    await overlay.waitFor({ state: 'attached' });
+    await inspectOverlay();
+    assert.equal(await control('#field-label').inputValue(), 'Role');
+    await control('#question').fill(instructions);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'inline-instructions.png') });
+    if (process.env.SCREENHAWK_PICKER_MEDIA) await delay(1100);
+    await control('button[type=submit]').click();
+    await control('#answer').waitFor();
+    assert.equal(await control('#answer').innerText(), draftAnswer);
+    assert.equal(await roleField.inputValue(), 'fixture-other-field');
+    assert.equal(await control('#insert').innerText(), 'Replace field text');
+    await page.screenshot({ scale: 'css', path: path.join(evidence, 'inline-review.png') });
+    if (process.env.SCREENHAWK_PICKER_MEDIA) await delay(1100);
+    assert.equal(requests.length, pickerRequestCount + 1);
+    const pickerPayload = requests.at(-1).body;
+    assert.equal(pickerPayload.store, false);
+    const pickerContent = pickerPayload.messages[0].content;
+    assert.equal(pickerContent.length, 1);
+    assert.equal(pickerContent[0].type, 'text');
+    assert.deepEqual(JSON.parse(pickerContent[0].text.split('\n')[1]), { fieldLabel: 'Role', instructions });
+    await control('#insert').click();
+    await overlay.waitFor({ state: 'detached' });
+    assert.equal(await roleField.inputValue(), draftAnswer);
+    assert.equal(await field.inputValue(), draftAnswer);
+    assert.equal(await password.inputValue(), 'fixture-password');
+    assert.equal(await page.locator('body').getAttribute('data-submitted'), null);
+    assert.equal(page.url(), `${origin}/form`);
+    if (process.env.SCREENHAWK_PICKER_MEDIA) await delay(1100);
+    console.log('PASS field selection, password exclusion, text-only draft, explicit insertion and no form submission');
   }
 
   console.log(`PASS ${real ? 'real OpenAI' : 'local mock'} | ${defaultModel} | 73.19 in the on-page answer | shortcut ${shortcut.shortcut}`);

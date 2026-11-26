@@ -2,6 +2,7 @@ import { readHistory, type HistoryEntry } from './history';
 
 const capture = document.querySelector<HTMLButtonElement>('#capture')!;
 const draft = document.querySelector<HTMLButtonElement>('#draft')!;
+const wand = document.querySelector<HTMLButtonElement>('#wand')!;
 const status = document.querySelector<HTMLElement>('#status')!;
 const historyList = document.querySelector<HTMLUListElement>('#history-list')!;
 const historyStatus = document.querySelector<HTMLElement>('#history-status')!;
@@ -9,9 +10,12 @@ const historyStatus = document.querySelector<HTMLElement>('#history-status')!;
 capture.addEventListener('click', () => void start('startCapture'));
 draft.addEventListener('click', () => void start('startFormDraft'));
 
-async function start(action: 'startCapture' | 'startFormDraft') {
+wand.addEventListener('click', () => void start('activateMagicWand'));
+
+async function start(action: 'startCapture' | 'startFormDraft' | 'activateMagicWand') {
   capture.disabled = true;
   draft.disabled = true;
+  wand.disabled = true;
   status.textContent = '';
   try {
     const result = await chrome.runtime.sendMessage({ action });
@@ -25,6 +29,7 @@ async function start(action: 'startCapture' | 'startFormDraft') {
   } finally {
     capture.disabled = false;
     draft.disabled = false;
+    wand.disabled = false;
   }
 }
 
