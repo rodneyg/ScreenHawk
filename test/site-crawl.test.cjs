@@ -15,10 +15,11 @@ test('robots.txt allows crawling and points to the sitemap', () => {
   assert.match(robots, new RegExp(`^Sitemap: ${origin}/sitemap\\.xml$`, 'm'));
 });
 
-test('sitemap.xml lists the home page and every URL maps to a site page', () => {
+test('sitemap.xml lists every public page exactly once', () => {
   const xml = readFileSync(join(site, 'sitemap.xml'), 'utf8');
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
-  assert.ok(locs.includes(`${origin}/`));
+  const expectedRoutes = ['/', '/changelog', '/privacy', '/support', '/terms'];
+  assert.deepEqual([...locs].sort(), expectedRoutes.map(route => `${origin}${route}`));
   for (const loc of locs) {
     assert.ok(loc.startsWith(`${origin}/`), loc);
     const path = loc.slice(origin.length + 1) || 'index';
