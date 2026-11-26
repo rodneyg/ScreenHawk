@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScreenHawk interaction</title>
+  <link rel="stylesheet" href="ui.css">
+  <script src="interaction-viewer.js" defer></script>
+</head>
+<body class="viewer">
+  <main>
+    <h1>Saved interaction</h1>
+    <p id="viewer-status" role="status">Loading interaction.</p>
+    <article hidden>
+      <p><time></time></p>
+      <p id="source-title"></p>
+      <a id="source-link" hidden>Revisit original page</a>
+      <h2>Selected area</h2>
+      <img id="saved-image" alt="Saved selected area">
+      <h2>Question</h2>
+      <p id="saved-question"></p>
+      <h2>Answer</h2>
+      <p id="saved-answer"></p>
+      <button id="delete-entry" type="button">Delete entry</button>
+    </article>
+  </main>
+</body>
+</html>

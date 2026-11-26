@@ -63,6 +63,7 @@ function loadPopup(t, sendMessage) {
     '#settings': settings,
     '#history-list': { replaceChildren: t.mock.fn() },
     '#history-status': historyStatus,
+    '#clear-history': { disabled: true, addEventListener: t.mock.fn() },
   };
   runBundle('popup.js', {
     chrome: {

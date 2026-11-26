@@ -1,5 +1,5 @@
 import { askOpenAI } from './api';
-import { deleteInteraction, saveInteraction } from './history';
+import { clearHistory, deleteInteraction, saveInteraction } from './history';
 
 const restrictedStorage = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 const starting = new Set<number>();
@@ -79,7 +79,8 @@ chrome.commands.onCommand.addListener((command, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return;
-  if (sender.url === chrome.runtime.getURL('popup.html')) {
+  const fromPopup = sender.url === chrome.runtime.getURL('popup.html');
+  if (fromPopup) {
     if (message?.action === 'startCapture') {
       chrome.tabs.query({ active: true, currentWindow: true })
         .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
@@ -96,11 +97,18 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         .then(respond, () => respond({ ok: false, message: pickerError }));
       return true;
     }
-    if (message?.action === 'deleteInteraction' && typeof message.id === 'string') {
-      restrictedStorage.then(() => deleteInteraction(message.id))
+    if (message?.action === 'clearHistory') {
+      restrictedStorage.then(clearHistory)
         .then(() => respond({ ok: true }), () => respond({ ok: false }));
       return true;
     }
+  }
+
+  const fromViewer = sender.url?.split('?')[0] === chrome.runtime.getURL('interaction-viewer.html');
+  if ((fromPopup || fromViewer) && message?.action === 'deleteInteraction' && typeof message.id === 'string') {
+    restrictedStorage.then(() => deleteInteraction(message.id))
+      .then(() => respond({ ok: true }), () => respond({ ok: false }));
+    return true;
   }
 
   if (sender.tab?.id === undefined || sender.frameId !== 0 || !sender.documentId) return;
@@ -138,7 +146,9 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     .then(async (result) => {
       if (image && result.ok && !controller.signal.aborted) {
         try {
-          await saveInteraction(prompt, result.answer, image, controller.signal);
+          await saveInteraction(prompt, result.answer, image, controller.signal, {
+            url: sender.url, title: sender.tab?.title,
+          });
         } catch {
           return { ...result, historySaveFailed: true };
         }

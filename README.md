@@ -54,7 +54,7 @@ To select a field directly, choose **Choose field** or press **Ctrl+Shift+Z** (*
 
 Your key and model setting are saved in local extension storage on this device. ScreenHawk captures the visible tab locally when you start a selection. When you choose **Ask**, it sends just the selected image and question directly to the OpenAI API using your key. When you choose **Generate draft**, the only page or user text ScreenHawk sends is the reviewed field label and the instructions you type. It checks the selected field's value on your device before inserting the draft so it can preserve any changes made while you were drafting. You submit the form yourself. OpenAI handles each request under your API account. The Chrome extension has no developer server or telemetry. The ScreenHawk website uses Vercel Web Analytics for aggregate page views and Chrome Web Store link clicks. The [website privacy policy](site/privacy.html) explains what those events contain.
 
-The toolbar popup's **History** shows up to 20 saved capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. History is stored on this device and excludes form drafts.
+The toolbar popup's **History** shows up to 50 saved capture questions and answers with the time and a compressed thumbnail of the selection. Open a question to review its answer or delete the entry. Choose **Open details** to view the selection and open its source page when available. Choose **Clear history** to delete all entries. History is stored on this device and excludes form drafts.
 
 ## Test
 
