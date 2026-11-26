@@ -2,16 +2,31 @@ const storeLink = document.querySelector('[data-store-url]');
 const allowedSources = new Set([
   'awesome_chrome',
   'producthunt',
+  'x',
+  'reddit',
+  'hn',
+  'newsletter',
+  'instagram',
+  'podcast',
+  'directory',
+  'community',
+  'partner',
+  'email',
 ]);
 
 if (storeLink?.dataset.storeUrl) {
   const params = new URLSearchParams(window.location.search);
   const source = [params.get('utm_source'), params.get('ref')]
     .find((value) => allowedSources.has(value));
+  const campaign = params.get('ref');
   const storeUrl = new URL(storeLink.dataset.storeUrl);
 
   if (source) {
     storeUrl.searchParams.set('utm_source', source);
+    storeUrl.searchParams.set('utm_medium', 'site');
+  }
+  if (campaign && /^[a-z0-9][a-z0-9-]{1,47}$/.test(campaign)) {
+    storeUrl.searchParams.set('utm_campaign', campaign);
   }
 
   storeLink.href = storeUrl.href;
