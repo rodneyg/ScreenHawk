@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { existsSync, readFileSync } = require('node:fs');
+const { existsSync, readdirSync, readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const test = require('node:test');
 
@@ -18,13 +18,11 @@ test('robots.txt allows crawling and points to the sitemap', () => {
 test('sitemap.xml lists every public page exactly once', () => {
   const xml = readFileSync(join(site, 'sitemap.xml'), 'utf8');
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
-  const expectedRoutes = ['/', '/changelog', '/privacy', '/support', '/terms'];
-  assert.deepEqual([...locs].sort(), expectedRoutes.map(route => `${origin}${route}`));
-  for (const loc of locs) {
-    assert.ok(loc.startsWith(`${origin}/`), loc);
-    const path = loc.slice(origin.length + 1) || 'index';
-    assert.ok(existsSync(join(site, `${path}.html`)), `${loc} has no page`);
-  }
+  // Vercel serves the site's HTML files at clean URLs. Templates are build inputs.
+  const expected = readdirSync(site, { withFileTypes: true })
+    .filter(file => file.isFile() && file.name.endsWith('.html') && !file.name.endsWith('.template.html'))
+    .map(file => file.name === 'index.html' ? `${origin}/` : `${origin}/${file.name.slice(0, -5)}`);
+  assert.deepEqual(locs.sort(), expected.sort());
 });
 
 test('landing page has the Web Store install link, canonical and og:image', () => {
