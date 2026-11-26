@@ -10,14 +10,14 @@ const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
 });
 
-test('concurrent saves keep the newest 50; deletion and clearing use the same write queue', async () => {
+function loadHistory(createImageBitmap = async () => ({ width: 320, height: 200, close() {} })) {
   const stored = {};
   const exports = {};
   let nextId = 0;
   runInNewContext(outputText, {
     exports, atob, btoa, Blob,
     crypto: { randomUUID: () => String(nextId++) },
-    createImageBitmap: async () => ({ width: 320, height: 200, close() {} }),
+    createImageBitmap,
     OffscreenCanvas: class {
       getContext() { return { drawImage() {} }; }
       async convertToBlob() { return new Blob(['jpeg fixture']); }
@@ -27,7 +27,11 @@ test('concurrent saves keep the newest 50; deletion and clearing use the same wr
       set: async (values) => Object.assign(stored, structuredClone(values)),
     } } },
   });
-  const { saveInteraction, readHistory, deleteInteraction, clearHistory } = exports;
+  return exports;
+}
+
+test('concurrent saves keep the newest 50; deletion and clearing use the same write queue', async () => {
+  const { saveInteraction, readHistory, deleteInteraction, clearHistory } = loadHistory();
   const signal = new AbortController().signal;
   const sourcePage = { url: 'https://example.test/', title: 'Example' };
   await Promise.all(Array.from({ length: 51 }, (_, i) =>
@@ -40,4 +44,27 @@ test('concurrent saves keep the newest 50; deletion and clearing use the same wr
   assert.equal((await readHistory()).length, 49);
   await clearHistory();
   assert.equal((await readHistory()).length, 0);
+});
+
+test('clearing history removes captures already being compressed', async () => {
+  const compressionStarted = Promise.withResolvers();
+  const releaseCompression = Promise.withResolvers();
+  const { saveInteraction, readHistory, clearHistory } = loadHistory(async () => {
+    compressionStarted.resolve();
+    await releaseCompression.promise;
+    return { width: 320, height: 200, close() {} };
+  });
+  const signal = new AbortController().signal;
+  const image = 'data:image/png;base64,AA==';
+
+  const earlierSave = saveInteraction('Earlier capture', 'Answer', image, signal, {});
+  await compressionStarted.promise;
+  const clear = clearHistory();
+  releaseCompression.resolve();
+
+  await Promise.all([earlierSave, clear]);
+  assert.equal((await readHistory()).length, 0, 'the earlier capture must stay deleted');
+
+  await saveInteraction('Later capture', 'Answer', image, signal, {});
+  assert.deepEqual(Array.from(await readHistory(), ({ prompt }) => prompt), ['Later capture']);
 });
