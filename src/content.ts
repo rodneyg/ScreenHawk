@@ -233,7 +233,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
         </div>
         <label id="question-label" for="question" class="muted">Question</label>
         <textarea id="question" rows="3" maxlength="2000" required></textarea>
-        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask. Successful answers are saved with a thumbnail in local history.</small>
+        <small id="sharing">ScreenHawk sends your selection and question to OpenAI when you click Ask. Successful answers are saved with a compressed image and source page information in local history.</small>
         <p id="error" role="alert" hidden></p>
         <a id="options" href="#" hidden>Open ScreenHawk settings</a>
         <div class="actions">

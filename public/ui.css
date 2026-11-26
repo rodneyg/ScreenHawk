@@ -42,3 +42,10 @@ details[open] .history-prompt { white-space: pre-wrap; }
 .history-preview time { font-size: 12px; }
 .history-answer { white-space: pre-wrap; overflow-wrap: anywhere; }
 .history-delete { background: transparent; color: #b5f4e2; padding: 4px 0; font-size: 13px; }
+
+.viewer main { max-width: 840px; margin: 36px auto; padding: 0 20px; overflow-wrap: anywhere; }
+.viewer #saved-image { display: block; max-width: 100%; height: auto; border-radius: 8px; }
+.viewer #saved-answer { white-space: pre-wrap; }
+.viewer #delete-entry { margin-top: 16px; }
+.popup .history-delete { margin-inline-start: 10px; }
+.popup #clear-history { margin-top: 12px; }
