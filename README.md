@@ -2,6 +2,14 @@
 
 ScreenHawk is a Chrome extension for asking questions about an area of the current tab and drafting text for form fields.
 
+## Screenshots
+
+![Live ScreenHawk homepage showing the area selection feature and Chrome installation links](docs/screenshots/01-screenhawk-website.png)
+
+![ScreenHawk toolbar popup with Select area, Draft for field, Choose field, Settings, and History controls](docs/screenshots/02-toolbar-popup.png)
+
+![ScreenHawk area selection overlay active on a public HTTPS page with drag instructions](docs/screenshots/03-select-area-overlay.png)
+
 ## Install from the Chrome Web Store
 
 [Add ScreenHawk to Chrome](https://chromewebstore.google.com/detail/screenhawk/leppimoaddibhnikopkcooeaehcifbin). For a local development build, follow the unpacked installation steps below.
