@@ -63,18 +63,19 @@ test('marketing analytics keeps tracking data minimal and the Store link usable'
   await page.route(storePattern, (route) => route.fulfill({ body: 'Chrome Web Store fixture' }));
   const scenarios = [
     { query: '?utm_source=private%40example.test', source: 'direct' },
-    { query: '?ref=producthunt&email=private%40example.test', source: 'producthunt', campaign: 'producthunt' },
     { query: '?utm_source=awesome_chrome&ref=launch-2026', source: 'awesome_chrome', campaign: 'launch-2026' },
     ...['x', 'reddit', 'hn', 'newsletter', 'instagram', 'podcast', 'directory', 'community', 'partner', 'email']
       .map((source) => ({ query: '?utm_source=' + source, source })),
     { query: '?utm_source=unknown&ref=Bad_Code', source: 'direct' },
+    // Keep the blocked-analytics case last: its route stays active for the rest of the page.
+    { query: '?ref=producthunt&email=private%40example.test', source: 'producthunt', campaign: 'producthunt' },
   ];
   for (const [index, scenario] of scenarios.entries()) {
     const query = scenario.query;
-    if (index === 1) {
+    if (index === scenarios.length - 1) {
       await page.route(origin + analyticsPath, (route) => route.abort('blockedbyclient'));
     }
-    const unavailable = index === 1
+    const unavailable = index === scenarios.length - 1
       ? page.waitForEvent('requestfailed', (request) => request.url() === origin + analyticsPath)
       : page.waitForResponse(origin + analyticsPath);
     await page.goto(origin + '/' + query);
