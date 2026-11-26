@@ -531,7 +531,7 @@ try {
   }
 
   if (!real) {
-    const narrow = { width: 320, height: 480 };
+    const narrow = { width: 320, height: 420 };
 
     async function assertFocused(locator) {
       assert.ok(await locator.evaluate((element) => element === element.getRootNode().activeElement),
@@ -546,7 +546,7 @@ try {
       `expected ${locator} within ${viewport.width}x${viewport.height}, got ${JSON.stringify(box)}`);
     }
 
-    stage = 'verify selection focus at 320x480';
+    stage = 'verify selection focus at 320x420';
     await page.keyboard.press('Escape');
     await overlay.waitFor({ state: 'detached' });
     // Selection mode closes on resize. Let the new viewport finish laying out before capture.
@@ -557,14 +557,30 @@ try {
     await assertFocused(invoiceActions);
     await capture();
     await assertFocused(control('dialog'));
-
-    stage = 'verify keyboard-only selection at 320x480';
     const keyboardRequests = requests.length;
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    await control('#box').waitFor({ state: 'visible' });
+    await page.keyboard.press('Escape');
+    await overlay.waitFor({ state: 'detached' });
+    await assertFocused(invoiceActions);
+    assert.equal(requests.length, keyboardRequests, 'canceling a keyboard selection sends no request');
+
+    stage = 'verify keyboard-only selection at 320x420';
+    // Chrome allows two captureVisibleTab calls per second.
+    await delay(550);
+    await capture();
+    await assertFocused(control('dialog'));
     await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-start.png') });
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('Enter');
-    await page.keyboard.press('Enter');
-    assert.equal(await control('#question').isVisible(), false, 'an empty selection stays open');
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+ArrowDown');
+    await page.keyboard.press('Space');
+    assert.match(await control('#selection-status').innerText(), /Selection is too small/);
+    assert.equal(await control('#question').isVisible(), false, 'a 1-by-1 selection stays open');
+    await assertFocused(control('dialog'));
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowDown');
     await control('#box').waitFor({ state: 'visible' });
@@ -576,7 +592,7 @@ try {
     assert.equal(requests.length, keyboardRequests, 'selection alone sends no request');
     await page.screenshot({ scale: 'css', path: path.join(evidence, 'keyboard-question.png') });
 
-    stage = 'verify keyboard submission and answer layout at 320x480';
+    stage = 'verify keyboard submission and answer layout at 320x420';
     await page.keyboard.type(question);
     await page.keyboard.press('Tab');
     await assertFocused(control('#cancel'));
@@ -597,17 +613,21 @@ try {
     await page.keyboard.press('Escape');
     await overlay.waitFor({ state: 'detached' });
     await assertFocused(invoiceActions);
-    console.log('PASS keyboard-only crop and submission at 320x480, answer layout, focus, and Escape restoration');
+    console.log('PASS keyboard-only crop and submission at 320x420, answer layout, focus, and Escape restoration');
 
-    stage = 'verify touch drag and cancellation at 320x480';
+    stage = 'verify touch drag and cancellation at 320x420';
     const priorRequests = requests.length;
     await worker.evaluate(() => chrome.storage.local.remove('apiKey'));
+    await delay(550);
     await capture();
     const dispatchTouch = (type, touchPoints = []) =>
       pageCDP.send('Input.dispatchTouchEvent', { type, touchPoints });
 
     await dispatchTouch('touchStart', [{ x: 30, y: 110 }]);
+    await dispatchTouch('touchMove', [{ x: 35, y: 115 }]);
+    await control('#box').waitFor({ state: 'visible' });
     await dispatchTouch('touchEnd');
+    await control('#box').waitFor({ state: 'hidden' });
     await control('#area').waitFor({ state: 'visible' });
     assert.equal(await control('#question').isVisible(), false);
 
@@ -619,8 +639,8 @@ try {
     await control('#area').waitFor({ state: 'visible' });
     assert.equal(await control('#question').isVisible(), false);
 
-    await dispatchTouch('touchStart', [{ x: 30, y: 110 }]);
-    await dispatchTouch('touchMove', [{ x: 100, y: 160 }]);
+    await dispatchTouch('touchStart', [{ x: 65, y: 140 }]);
+    await dispatchTouch('touchMove', [{ x: 155, y: 205 }]);
     await dispatchTouch('touchEnd');
     await control('#question').waitFor({ state: 'visible' });
     assert.equal(requests.length, priorRequests);
@@ -630,7 +650,7 @@ try {
     const cancel = control('#cancel');
     const ask = control('button[type=submit]');
     await assertFocused(prompt);
-    for (const locator of [control('form h2'), prompt, cancel, ask]) {
+    for (const locator of [control('form h2'), prompt, control('#sharing'), cancel, ask]) {
       await assertInViewport(locator, narrow);
     }
     await page.keyboard.type(question);
@@ -640,15 +660,21 @@ try {
     await assertFocused(ask);
     await page.keyboard.press('Shift+Tab');
     await assertFocused(cancel);
+    await page.keyboard.press('Shift+Tab');
+    await assertFocused(prompt);
     await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await assertFocused(ask);
     await page.keyboard.press('Enter');
     await control('#error').waitFor({ state: 'visible' });
     assert.match(await control('#error').innerText(), /Add your OpenAI API key/);
     assert.equal(requests.length, priorRequests);
-    await assertInViewport(control('#error'), narrow);
-    await assertInViewport(control('#options'), narrow);
-    await assertInViewport(cancel, narrow);
-    await assertInViewport(ask, narrow);
+    // Preserve the 480px error layout check. The extra error text needs more height.
+    const errorViewport = { ...narrow, height: 480 };
+    await page.setViewportSize(errorViewport);
+    for (const locator of [control('#error'), control('#options'), cancel, ask]) {
+      await assertInViewport(locator, errorViewport);
+    }
     await page.keyboard.press('Escape');
     await overlay.waitFor({ state: 'detached' });
     await assertFocused(invoiceActions);
@@ -658,6 +684,8 @@ try {
     await settings.setViewportSize(narrow);
     await settings.goto(`${base}/options.html`);
     await settings.waitForFunction(() => !document.querySelector('fieldset').disabled);
+    assert.equal(await settings.evaluate(() => document.documentElement.scrollWidth), narrow.width,
+      'settings should fit without horizontal scrolling');
     for (const locator of [
       settings.getByLabel('OpenAI API key'),
       settings.getByLabel('Vision model'),
@@ -673,6 +701,8 @@ try {
     const popup = await context.newPage();
     await popup.setViewportSize(narrow);
     await popup.goto(`${base}/popup.html`);
+    assert.equal(await popup.evaluate(() => document.documentElement.scrollWidth), narrow.width,
+      'popup should fit without horizontal scrolling');
     for (const locator of [
       popup.getByRole('button', { name: 'Select area' }),
       popup.getByRole('button', { name: 'Draft for field' }),
@@ -685,7 +715,7 @@ try {
     }
     await popup.close();
 
-    console.log('PASS 320x480 selection focus and Escape restoration, tiny touch, touch cancel and drag, prompt and error controls, Settings and popup keyboard order');
+    console.log('PASS 320x420 selection focus and Escape restoration, tiny touch, touch cancel and drag, prompt controls, Settings and popup keyboard order | error controls at 320x480');
   }
 
   stage = 'verify keyboard command registration';
