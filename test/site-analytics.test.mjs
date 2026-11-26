@@ -45,53 +45,81 @@ test('marketing analytics keeps tracking data minimal and the Store link usable'
     await page.goto(origin + '/' + name + '.html');
     assert.equal((await failedScript).status(), 404);
     assert.equal(await page.locator('script[defer][src="' + analyticsPath + '"]').count(), 1);
+    if (name === 'index') {
+      await page.waitForFunction(() => window.vaq?.some(([command, event]) => command === 'event' && event?.name === 'landing_view'));
+    }
     const redacted = await page.evaluate(() => {
       const [command, redact] = window.vaq[0];
       return [command, redact({ type: 'pageview', url: location.href + '?email=private#private' })];
     });
     assert.deepEqual(redacted, ['beforeSend', { type: 'pageview', url: page.url() }]);
+    const landingEvents = await page.evaluate(() => window.vaq
+      .filter(([command, event]) => command === 'event' && event?.name === 'landing_view')
+      .map(([command, event]) => [command, event]));
+    assert.deepEqual(landingEvents, name === 'index' ? [['event', { name: 'landing_view', data: { source: 'direct' } }]] : []);
   }
 
   const storePattern = 'https://chromewebstore.google.com/**';
   await page.route(storePattern, (route) => route.fulfill({ body: 'Chrome Web Store fixture' }));
-  for (const [failure, query, source] of [
-    ['404', '?utm_source=private%40example.test', 'direct'],
-    ['blocked', '?ref=producthunt&email=private%40example.test', 'producthunt'],
-  ]) {
-    if (failure === 'blocked') {
+  const scenarios = [
+    { query: '?utm_source=private%40example.test', source: 'direct' },
+    { query: '?utm_source=awesome_chrome&ref=launch-2026', source: 'awesome_chrome', campaign: 'launch-2026' },
+    ...['x', 'reddit', 'hn', 'newsletter', 'instagram', 'podcast', 'directory', 'community', 'partner', 'email']
+      .map((source) => ({ query: '?utm_source=' + source, source })),
+    { query: '?utm_source=unknown&ref=Bad_Code', source: 'direct' },
+    // Keep the blocked-analytics case last: its route stays active for the rest of the page.
+    { query: '?ref=producthunt&email=private%40example.test', source: 'producthunt', campaign: 'producthunt' },
+  ];
+  for (const [index, scenario] of scenarios.entries()) {
+    const query = scenario.query;
+    if (index === scenarios.length - 1) {
       await page.route(origin + analyticsPath, (route) => route.abort('blockedbyclient'));
     }
-    const unavailable = failure === 'blocked'
+    const unavailable = index === scenarios.length - 1
       ? page.waitForEvent('requestfailed', (request) => request.url() === origin + analyticsPath)
       : page.waitForResponse(origin + analyticsPath);
     await page.goto(origin + '/' + query);
     await unavailable;
+    await page.waitForFunction(() => window.vaq?.some(([command, event]) => command === 'event' && event?.name === 'landing_view'));
     const link = page.getByRole('link', { name: 'Add to Chrome' });
-    await link.evaluate((element) => element.addEventListener('click', (event) => {
+    await link.evaluate((element) => element.addEventListener('click', () => {
       window.queuedEvents = window.vaq.filter(([command]) => command === 'event')
         .map((args) => Array.from(args));
       sessionStorage.setItem('queuedEvents', JSON.stringify(window.queuedEvents));
     }, { once: true }));
     const destination = new URL(storeListing);
-    if (source !== 'direct') destination.searchParams.set('utm_source', source);
+    if (scenario.source !== 'direct') {
+      destination.searchParams.set('utm_source', scenario.source);
+      destination.searchParams.set('utm_medium', 'site');
+    }
+    if (scenario.campaign) destination.searchParams.set('utm_campaign', scenario.campaign);
     assert.equal(await link.getAttribute('href'), destination.href);
+    const landingEvent = await page.evaluate(() => window.vaq
+      .filter(([command, event]) => command === 'event' && event?.name === 'landing_view')
+      .map(([, event]) => event));
+    assert.deepEqual(landingEvent, [{ name: 'landing_view', data: { source: scenario.source } }]);
+    assert.equal(JSON.stringify(landingEvent).includes('launch-2026'), false);
     await Promise.all([page.waitForURL(destination.href), link.click()]);
     await page.goBack();
 
     const queued = await page.evaluate(() => JSON.parse(sessionStorage.getItem('queuedEvents')));
-    assert.deepEqual(queued, [['event', { name: 'cws_install_click', data: { source } }]]);
-    const forwarded = await link.evaluate((element) => {
-      window.vaq = [];
-      for (const source of ['awesome_chrome', 'private@example.test']) {
-        element.dispatchEvent(new CustomEvent('cws_install_click', {
-          detail: { source, email: 'private@example.test' },
-        }));
-      }
-      return window.vaq.map((args) => Array.from(args));
-    });
-    assert.deepEqual(forwarded, ['awesome_chrome', 'direct']
-      .map((source) => ['event', { name: 'cws_install_click', data: { source } }]));
+    assert.deepEqual(queued, [
+      ['event', { name: 'landing_view', data: { source: scenario.source } }],
+      ['event', { name: 'cws_install_click', data: { source: scenario.source } }],
+    ]);
   }
+
+  const forwarded = await page.getByRole('link', { name: 'Add to Chrome' }).evaluate((element) => {
+    window.vaq = [];
+    for (const source of ['awesome_chrome', 'private@example.test']) {
+      element.dispatchEvent(new CustomEvent('cws_install_click', {
+        detail: { source, email: 'private@example.test' },
+      }));
+    }
+    return window.vaq.map((args) => Array.from(args));
+  });
+  assert.deepEqual(forwarded, ['awesome_chrome', 'direct']
+    .map((source) => ['event', { name: 'cws_install_click', data: { source } }]));
 
   assert.deepEqual(errors, []);
 });

@@ -26,6 +26,16 @@
       const url = new URL(event.url);
       return { ...event, url: url.origin + url.pathname };
     });
+    (() => {
+      const allowedSources = new Set([
+        'awesome_chrome', 'producthunt', 'x', 'reddit', 'hn', 'newsletter',
+        'instagram', 'podcast', 'directory', 'community', 'partner', 'email',
+      ]);
+      const params = new URLSearchParams(window.location.search);
+      const source = [params.get('utm_source'), params.get('ref')]
+        .find((value) => allowedSources.has(value)) || 'direct';
+      window.va('event', { name: 'landing_view', data: { source } });
+    })();
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
