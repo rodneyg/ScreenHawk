@@ -31,3 +31,8 @@ test('landing page has the Web Store install link, canonical and og:image', () =
   assert.match(index, new RegExp(`<meta property="og:image" content="${origin}/assets/social\\.png">`));
   assert.ok(existsSync(join(site, 'assets/social.png')));
 });
+
+test('landing page links directly to the OpenAI API rates', () => {
+  const apiPricingLinks = [...index.matchAll(/<a\b[^>]*\bhref="([^"]+)"[^>]*>OpenAI API pricing<\/a>/g)];
+  assert.deepEqual(apiPricingLinks.map((match) => match[1]), ['https://developers.openai.com/api/docs/pricing']);
+});
