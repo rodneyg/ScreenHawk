@@ -31,7 +31,9 @@ function loadWorker(t, { executeScript, captureVisibleTab }) {
       sendMessage: t.mock.fn(async () => ({ ok: true })),
       captureVisibleTab: t.mock.fn(captureVisibleTab),
       onActivated: { addListener: t.mock.fn(), removeListener: t.mock.fn() },
+      onUpdated: { addListener: t.mock.fn() },
     },
+    action: { setBadgeText: async () => {} },
   };
 
   runBundle(manifest.background.service_worker, { chrome });
