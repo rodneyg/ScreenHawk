@@ -39,7 +39,7 @@ The build creates `dist/` with `manifest.json` at its root. Keep the entire fold
 
 - **Chrome can't load the manifest or a file:** Run `npm run build` again and choose the folder with the built `manifest.json` directly inside it.
 - **Chrome still shows the old build:** After rebuilding, click **Reload** on the ScreenHawk card at `chrome://extensions`, then refresh your test tab.
-- **Select area does nothing:** Switch to a regular web page. Chrome blocks extensions on `chrome://` pages and the Chrome Web Store. For a shortcut that does nothing, check `chrome://extensions/shortcuts`.
+- **Select area does nothing:** Switch to a regular web page. Chrome blocks extensions on `chrome://` pages and the Chrome Web Store. If a shortcut cannot start, ScreenHawk marks its toolbar icon with `!`; an unpinned icon may hide the mark. Check `chrome://extensions/shortcuts` if the shortcut still does nothing.
 - **Ask shows an API error:** Open **Settings**, check the saved key and model, and review the API account's access and quota.
 
 ## Build a ZIP for manual installation

@@ -16,6 +16,10 @@ Based on T-2020's test gap map and T-2030's timing probe. Covered items run unde
 - **Covered**. An unanswered request aborts at its deadline and clears its timer. Cancellation affects only the initiating document, even when two documents share a request ID. PR #26 tests basic single-document cancellation.
 - **Covered**. Invalid senders and malformed questions are ignored without a reply, a settings read, or an API request. PR #26 tests unknown actions.
 
+## Keyboard shortcut feedback (`src/background.ts`)
+
+- **Covered by T-99484123229959167**. A failed shortcut marks the affected tab, a successful shortcut and popup start clear the mark, completed navigation clears it, and a missing command tab is resolved to the active tab. Headless Chromium checks the mark on a `chrome://` tab and its removal after navigation.
+
 ## Content overlay (`src/content.ts`)
 
 - **Covered**. At 320 × 420, the keyboard-only capture in `test/e2e.mjs` keeps the selector open for an empty selection. It checks focus on the question after marking both corners, submits by keyboard, and confirms Escape restores focus on the page.

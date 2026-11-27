@@ -60,21 +60,32 @@ chrome.commands.onCommand.addListener((command, tab) => {
     void (async () => {
       const activeTab = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
       const result = await startFormDraft(activeTab, 'activateMagicWand').catch(() => ({ ok: false, message: pickerError }));
-      if (activeTab?.id !== undefined) {
-        await chrome.action.setTitle({ tabId: activeTab.id, title: result.ok ? 'ScreenHawk' : pickerError });
-      }
+      await updateShortcutFeedback(activeTab, result.ok, pickerError);
     })().catch(() => {});
     return;
   }
   if (command !== 'capture-screenshot') return;
   void (async () => {
-    const result = await startCapture(tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]);
-    if (!result.ok && tab?.id !== undefined) {
-      await chrome.action.setTitle({ tabId: tab.id, title: result.message ?? captureError });
-    } else if (tab?.id !== undefined) {
-      await chrome.action.setTitle({ tabId: tab.id, title: 'ScreenHawk' });
-    }
+    const activeTab = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+    const result = await startCapture(activeTab);
+    await updateShortcutFeedback(activeTab, result.ok, result.message ?? captureError);
   })().catch(() => {});
+});
+
+async function updateShortcutFeedback(tab: chrome.tabs.Tab | undefined, ok: boolean, error: string) {
+  if (tab?.id === undefined) return;
+  try {
+    await chrome.action.setTitle({ tabId: tab.id, title: ok ? 'ScreenHawk' : error });
+  } catch { /* A rejected toolbar update must not escape the shortcut listener. */ }
+  try {
+    await chrome.action.setBadgeText({ tabId: tab.id, text: ok ? '' : '!' });
+  } catch { /* Keep the listener alive if Chrome rejects the badge update. */ }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'complete') {
+    void chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
@@ -83,17 +94,26 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (fromPopup) {
     if (message?.action === 'startCapture') {
       chrome.tabs.query({ active: true, currentWindow: true })
-        .then(([tab]) => startCapture(tab)).then(respond, () => respond({ ok: false, message: captureError }));
+        .then(async ([tab]) => {
+          await clearShortcutBadge(tab);
+          return startCapture(tab);
+        }).then(respond, () => respond({ ok: false, message: captureError }));
       return true;
     }
     if (message?.action === 'startFormDraft') {
       chrome.tabs.query({ active: true, currentWindow: true })
-        .then(([tab]) => startFormDraft(tab)).then(respond, () => respond({ ok: false, message: formError }));
+        .then(async ([tab]) => {
+          await clearShortcutBadge(tab);
+          return startFormDraft(tab);
+        }).then(respond, () => respond({ ok: false, message: formError }));
       return true;
     }
     if (message?.action === 'activateMagicWand') {
       chrome.tabs.query({ active: true, currentWindow: true })
-        .then(([tab]) => startFormDraft(tab, 'activateMagicWand'))
+        .then(async ([tab]) => {
+          await clearShortcutBadge(tab);
+          return startFormDraft(tab, 'activateMagicWand');
+        })
         .then(respond, () => respond({ ok: false, message: pickerError }));
       return true;
     }
@@ -167,3 +187,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     });
   return true;
 });
+
+async function clearShortcutBadge(tab: chrome.tabs.Tab | undefined) {
+  if (tab?.id === undefined) return;
+  try {
+    await chrome.action.setBadgeText({ tabId: tab.id, text: '' });
+  } catch { /* Popup feedback remains available when the badge API rejects. */ }
+}
