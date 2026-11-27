@@ -6,7 +6,7 @@ Rodney Gainous Jr publishes ScreenHawk, a Chrome extension for asking questions 
 
 ## What stays in Chrome
 
-ScreenHawk saves your OpenAI API key and model preference in `chrome.storage.local` on your device. When you start a capture, ScreenHawk takes a screenshot of the visible tab and crops it on your device to the area you select. ScreenHawk displays the answer in the tab where you asked the question. ScreenHawk keeps up to 50 capture questions and answers in local storage on this device. New entries include a timestamp, a compressed selection image and thumbnail, and the source page address and title when available.
+ScreenHawk saves your OpenAI API key and model preference in `chrome.storage.local` on your device. When you start a capture, ScreenHawk takes a screenshot of the visible tab and crops it on your device to the area you select. ScreenHawk displays the answer in the tab where you asked the question. ScreenHawk keeps up to 50 capture questions and answers in local storage on this device. New entries include a timestamp, a compressed selection image and thumbnail, and the source page address and title when available. Captures made in incognito windows are not saved to history.
 
 ## What goes to OpenAI
 

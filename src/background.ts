@@ -164,7 +164,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   void restrictedStorage
     .then(() => askOpenAI(prompt, image, controller.signal))
     .then(async (result) => {
-      if (image && result.ok && !controller.signal.aborted) {
+      // Local history persists on disk, so incognito captures are never saved.
+      if (image && result.ok && !controller.signal.aborted && !sender.tab?.incognito) {
         try {
           await saveInteraction(prompt, result.answer, image, controller.signal, {
             url: sender.url, title: sender.tab?.title,
