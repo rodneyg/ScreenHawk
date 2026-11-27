@@ -496,6 +496,9 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
     submit.textContent = 'Generate draft';
     area.hidden = true;
   }
+  if (!field && chrome.extension?.inIncognitoContext) {
+    root.querySelector('#sharing')!.textContent = 'ScreenHawk sends your selection and question to OpenAI when you click Ask. Incognito captures are not saved to history.';
+  }
   document.documentElement.append(host);
   dialog.showModal();
   if (drafting) showPrompt('Draft for field');

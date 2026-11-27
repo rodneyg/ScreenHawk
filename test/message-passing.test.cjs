@@ -89,10 +89,10 @@ function loadWorker(t, { apiKey = '', fetch } = {}) {
     },
     readStorage,
     writeStorage,
-    sendMessage(message) {
+    sendMessage(message, from = sender) {
       const { promise: reply, resolve } = Promise.withResolvers();
       const respond = t.mock.fn(resolve);
-      const keepsChannelOpen = listener(message, sender, respond);
+      const keepsChannelOpen = listener(message, from, respond);
       return { keepsChannelOpen, reply, respond };
     },
   };
@@ -165,6 +165,19 @@ test('ask replies with the answer for the submitted prompt and image', { timeout
     answer: 'The total is $42.',
     thumbnail: `data:image/jpeg;base64,${btoa(thumbnailBytes)}`,
   });
+});
+
+test('ask answers an incognito capture without saving it to history', { timeout: 2000 }, async (t) => {
+  const worker = loadWorker(t, {
+    apiKey: 'test-fixture',
+    fetch: async () => new Response(JSON.stringify({
+      choices: [{ message: { content: 'The total is $42.' } }],
+    })),
+  });
+  const incognito = { ...sender, tab: { ...sender.tab, incognito: true } };
+
+  await assertReply(worker.sendMessage(question, incognito), { ok: true, answer: 'The total is $42.' });
+  assert.equal(worker.writeStorage.mock.callCount(), 0);
 });
 
 test('ask replies with a settings action when the key is missing', { timeout: 2000 }, async (t) => {
