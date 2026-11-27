@@ -153,7 +153,8 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
         color: #eef6f7; background: rgb(16 27 36 / 94%); border: 1px solid #35515f; border-radius: 18px;
         backdrop-filter: blur(10px);
         font: 15px/1.5 system-ui, sans-serif; box-shadow: 0 18px 56px #020a1399;
-        padding: 24px; width: min(460px, calc(100vw - 32px)); outline: none;
+        padding: 24px; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 36px);
+        overflow-y: auto; outline: none;
       }
       dialog::backdrop { background: #0410185c; }
       dialog.selecting {
