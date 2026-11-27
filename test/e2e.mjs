@@ -669,11 +669,11 @@ try {
     await control('#error').waitFor({ state: 'visible' });
     assert.match(await control('#error').innerText(), /Add your OpenAI API key/);
     assert.equal(requests.length, priorRequests);
-    // Preserve the 480px error layout check. The extra error text needs more height.
-    const errorViewport = { ...narrow, height: 480 };
-    await page.setViewportSize(errorViewport);
+    // The missing-key error can extend the dialog. Keyboard focus must scroll Cancel into view.
+    await page.keyboard.press('Shift+Tab');
+    await assertFocused(cancel);
     for (const locator of [control('#error'), control('#options'), cancel, ask]) {
-      await assertInViewport(locator, errorViewport);
+      await assertInViewport(locator, narrow);
     }
     await page.keyboard.press('Escape');
     await overlay.waitFor({ state: 'detached' });
@@ -715,7 +715,7 @@ try {
     }
     await popup.close();
 
-    console.log('PASS 320x420 selection focus and Escape restoration, tiny touch, touch cancel and drag, prompt controls, Settings and popup keyboard order | error controls at 320x480');
+    console.log('PASS 320x420 selection focus and Escape restoration, tiny touch, touch cancel and drag, prompt controls, missing-key error controls, Settings and popup keyboard order at 320x420');
   }
 
   stage = 'verify keyboard command registration';
