@@ -41,7 +41,9 @@ function loadWorker(t, { activeTab = tab, screenshot, fetch } = {}) {
         addListener: (listener) => listeners.add(listener),
         removeListener: (listener) => assert.ok(listeners.delete(listener), 'remove the registered listener'),
       },
+      onUpdated: { addListener() {} },
     },
+    action: { setBadgeText: async () => {} },
   };
 
   runInNewContext(bundle, {

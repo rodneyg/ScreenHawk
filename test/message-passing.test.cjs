@@ -26,6 +26,8 @@ const thumbnailBytes = 'test-thumbnail';
 
 function loadWorker(t, { apiKey = '', fetch } = {}) {
   const registerMessage = t.mock.fn();
+  const registerTabUpdate = t.mock.fn();
+  const setBadgeText = t.mock.fn(async () => {});
   const openOptions = t.mock.fn(async () => {});
   const fetchAnswer = t.mock.fn(fetch ?? (async () => {
     throw new Error('Unexpected fetch');
@@ -59,7 +61,9 @@ function loadWorker(t, { apiKey = '', fetch } = {}) {
     setTimeout,
     fetch: fetchAnswer,
     chrome: {
+      action: { setBadgeText },
       commands: { onCommand: { addListener() {} } },
+      tabs: { onUpdated: { addListener: registerTabUpdate } },
       runtime: {
         id: sender.id,
         getURL: (file) => `chrome-extension://${sender.id}/${file}`,
@@ -73,10 +77,16 @@ function loadWorker(t, { apiKey = '', fetch } = {}) {
   }, { filename });
 
   assert.equal(registerMessage.mock.callCount(), 1);
+  assert.equal(registerTabUpdate.mock.callCount(), 1);
   const [listener] = registerMessage.mock.calls[0].arguments;
   return {
     openOptions,
     fetchAnswer,
+    setBadgeText,
+    updateTab(changeInfo) {
+      const [listener] = registerTabUpdate.mock.calls[0].arguments;
+      listener(42, changeInfo);
+    },
     readStorage,
     writeStorage,
     sendMessage(message) {
@@ -94,6 +104,14 @@ async function assertReply({ keepsChannelOpen, reply, respond }, expected) {
   assert.deepEqual(structuredClone(await reply), expected);
   assert.equal(respond.mock.callCount(), 1);
 }
+
+test('navigation completion clears the shortcut badge', async (t) => {
+  const worker = loadWorker(t);
+  worker.updateTab({ status: 'complete' });
+  await new Promise(setImmediate);
+  assert.equal(worker.setBadgeText.mock.callCount(), 1);
+  assert.deepEqual(structuredClone(worker.setBadgeText.mock.calls[0].arguments[0]), { tabId: 42, text: '' });
+});
 
 test('the worker ignores unknown content messages without a reply or side effects', async (t) => {
   const worker = loadWorker(t);

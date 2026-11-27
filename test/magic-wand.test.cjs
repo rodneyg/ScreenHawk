@@ -17,10 +17,12 @@ async function dispatchShortcut(activeTab) {
       async setTitle(details) {
         calls.push(['title', structuredClone(details)]);
       },
+      async setBadgeText() {},
     },
     runtime: { onMessage: { addListener() {} } },
     storage: { local: { async setAccessLevel() {} } },
     tabs: {
+      onUpdated: { addListener() {} },
       async query(query) {
         calls.push(['query', structuredClone(query)]);
         return [activeTab];
