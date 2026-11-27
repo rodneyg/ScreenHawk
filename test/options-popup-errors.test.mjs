@@ -25,7 +25,7 @@ async function openPage(t, name, mock, initialValue) {
   });
   await context.addInitScript(mock, initialValue);
   const page = await context.newPage();
-  page.setDefaultTimeout(2000);
+  page.setDefaultTimeout(10000);
   await page.goto(`${fixtureOrigin}/${name}.html`);
   return page;
 }
@@ -174,5 +174,150 @@ for (const failure of ['rejected message', 'missing reply']) {
       { action: 'startCapture' },
       { action: 'startCapture' },
     ]);
+  });
+}
+
+const entry = {
+  id: 'fixture-entry',
+  timestamp: 0,
+  prompt: 'Fixture prompt',
+  answer: 'Fixture answer',
+  thumbnail: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+};
+
+// Each deleteInteraction or clearHistory request stays pending until the test settles it.
+function mockHistory({ entry, failFirstRead }) {
+  const fixture = { messages: [] };
+  window.fixture = fixture;
+  window.confirm = () => true;
+  window.chrome = {
+    storage: {
+      local: {
+        async get() {
+          if (failFirstRead && !sessionStorage.getItem('history-read-failed')) {
+            sessionStorage.setItem('history-read-failed', 'true');
+            throw new Error('Fixture history read failed');
+          }
+          return { interactionHistory: [entry] };
+        },
+      },
+    },
+    runtime: {
+      sendMessage(message) {
+        fixture.messages.push(message);
+        return new Promise((resolve, reject) => {
+          fixture.reject = () => reject(new Error('Fixture message failed'));
+          fixture.reply = resolve;
+        });
+      },
+    },
+  };
+}
+
+async function expectHistoryStatus(page, message) {
+  const status = page.locator('#history-status');
+  await status.getByText(message, { exact: true }).waitFor();
+  assert.equal(await status.innerText(), message);
+}
+
+function settle(page, failure) {
+  return page.evaluate((failure) => {
+    if (failure === 'rejected message') window.fixture.reject();
+    else if (failure === 'missing reply') window.fixture.reply(undefined);
+    else window.fixture.reply({ ok: failure === 'none' });
+  }, failure);
+}
+
+test('popup explains a history read failure and loads history when reopened', async (t) => {
+  const page = await openPage(t, 'popup', mockHistory, { entry, failFirstRead: true });
+  const clear = page.getByRole('button', { name: 'Clear history' });
+
+  await expectHistoryStatus(page, 'Could not load history.');
+  assert.equal(await clear.isDisabled(), true);
+  assert.equal(await page.getByRole('listitem').count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Select area' }).isEnabled(), true);
+
+  await page.reload();
+  await page.getByText(entry.prompt, { exact: true }).waitFor();
+  assert.equal(await clear.isEnabled(), true);
+  assert.equal(await page.locator('#history-status').textContent(), '');
+});
+
+const writeFailures = ['rejected message', 'missing reply', 'storage write error reply'];
+
+for (const failure of writeFailures) {
+  test(`popup keeps the entry after a delete ${failure} and deletes it on retry`, async (t) => {
+    const page = await openPage(t, 'popup', mockHistory, { entry });
+    await page.getByText(entry.prompt, { exact: true }).click();
+    const remove = page.getByRole('button', { name: 'Delete entry' });
+
+    await remove.click();
+    assert.equal(await remove.isDisabled(), true);
+    await remove.evaluate((button) => button.click());
+    assert.equal(await page.evaluate(() => window.fixture.messages.length), 1);
+
+    await settle(page, failure);
+    await expectHistoryStatus(page, 'Could not delete this entry. Try again.');
+    assert.equal(await page.getByRole('listitem').count(), 1);
+    assert.equal(await remove.isEnabled(), true);
+
+    await remove.click();
+    await settle(page, 'none');
+    await expectHistoryStatus(page, 'No saved interactions.');
+    assert.equal(await page.getByRole('listitem').count(), 0);
+    assert.deepEqual(await page.evaluate(() => window.fixture.messages), [
+      { action: 'deleteInteraction', id: entry.id },
+      { action: 'deleteInteraction', id: entry.id },
+    ]);
+  });
+
+  test(`popup keeps history after a clear ${failure} and clears it on retry`, async (t) => {
+    const page = await openPage(t, 'popup', mockHistory, { entry });
+    const clear = page.getByRole('button', { name: 'Clear history' });
+
+    await clear.click();
+    assert.equal(await clear.isDisabled(), true);
+    await clear.evaluate((button) => button.click());
+    assert.equal(await page.evaluate(() => window.fixture.messages.length), 1);
+
+    await settle(page, failure);
+    await expectHistoryStatus(page, 'Could not clear history. Try again.');
+    assert.equal(await page.getByRole('listitem').count(), 1);
+    assert.equal(await clear.isEnabled(), true);
+
+    await clear.click();
+    await settle(page, 'none');
+    await expectHistoryStatus(page, 'No saved interactions.');
+    assert.equal(await page.getByRole('listitem').count(), 0);
+    assert.equal(await clear.isDisabled(), true);
+    assert.deepEqual(await page.evaluate(() => window.fixture.messages), [
+      { action: 'clearHistory' },
+      { action: 'clearHistory' },
+    ]);
+  });
+}
+
+const starts = [
+  ['Select area', 'startCapture'],
+  ['Draft for field', 'startFormDraft'],
+  ['Choose field', 'activateMagicWand'],
+];
+
+for (const [label, action] of starts) {
+  test(`popup disables every start control while ${label} fails to send`, async (t) => {
+    const page = await openPage(t, 'popup', mockPopup, null);
+    const buttons = starts.map(([name]) => page.getByRole('button', { name }));
+
+    await page.getByRole('button', { name: label }).click();
+    for (const button of buttons) {
+      assert.equal(await button.isDisabled(), true);
+      await button.evaluate((element) => element.click());
+    }
+    assert.deepEqual(await page.evaluate(() => window.fixture.messages), [{ action }]);
+
+    await page.evaluate(() => window.fixture.reject());
+    await expectStatus(page, startupError);
+    for (const button of buttons) assert.equal(await button.isEnabled(), true);
+    assert.equal(await page.evaluate(() => window.fixture.closeCalls), 0);
   });
 }

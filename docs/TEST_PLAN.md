@@ -34,6 +34,10 @@ Based on T-2020's test gap map and T-2030's timing probe. Covered items run unde
 
 - **Covered**. Options shows recovery instructions on storage read or write failure. A failed read keeps the form disabled. A failed write re-enables it for a retry.
 - **Covered**. `test/permission-errors.test.cjs` checks worker and runtime messaging failures, disabled capture controls during the request, and recovery.
+- **Covered**. `test/options-popup-errors.test.mjs` checks that a failed send from any of the three start buttons disables all three while pending, shows the retry message, and enables them again.
+- **Covered**. A history read failure shows `Could not load history.`, keeps Clear history disabled, leaves Select area usable, and loads history when the popup is reopened.
+- **Covered**. A failed delete or clear (rejected message, missing reply, or a storage write error reply) keeps the saved entry, shows a retry message, and succeeds on retry.
+- **Open**. The history read message gives no recovery step, and a rejected `openOptionsPage` call from the popup Settings link shows no message. Both need a change in `src/popup.ts`.
 
 ## API (`src/api.ts`)
 
