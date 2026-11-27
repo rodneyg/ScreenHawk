@@ -449,6 +449,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
     const prompt = question.value.trim();
     if (!event.isTrusted || !prompt || (!drafting && !crop) || requestId) return;
     requestId = String(++nextQuestion);
+    const restoreSubmitFocus = submit.matches(':focus');
     const request = drafting
       ? { action: 'draft', id: requestId, prompt, fieldLabel: fieldLabel.value.trim() }
       : { action: 'ask', id: requestId, prompt, image: crop };
@@ -480,6 +481,7 @@ function showQuestion(context: { preview: HTMLCanvasElement } | { field: Field }
       question.readOnly = false;
       fieldLabel.readOnly = false;
       submit.textContent = drafting ? 'Generate draft' : 'Ask';
+      if (restoreSubmitFocus && !form.hidden) submit.focus({ preventScroll: true });
     }
   });
 

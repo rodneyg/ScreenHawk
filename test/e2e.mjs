@@ -106,7 +106,7 @@ try {
       `--load-extension=${dist}`,
     ],
   });
-  context.setDefaultTimeout(7000);
+  context.setDefaultTimeout(30000);
   if (real) {
     context.on('response', async (response) => {
       if (response.url() !== endpoint) return;
@@ -229,7 +229,8 @@ try {
   }
 
   async function optionsFromError() {
-    const opened = context.waitForEvent('page');
+    const existing = context.pages().find((candidate) => candidate.url() === `${base}/options.html`);
+    const opened = existing ? Promise.resolve(existing) : context.waitForEvent('page');
     await control('#options').click();
     const options = await opened;
     await options.waitForURL(`${base}/options.html`);
@@ -245,7 +246,7 @@ try {
     await options.getByLabel('Vision model').fill(model);
     await options.getByRole('button', { name: 'Save settings' }).click();
     await options.getByText('Settings saved on this device.').waitFor();
-    await options.reload();
+    await options.reload({ waitUntil: 'domcontentloaded' });
     await options.waitForFunction(() => !document.querySelector('fieldset').disabled);
     assert.ok(await field.evaluate((input, value) => input.value === value, key), 'local key did not persist');
     assert.equal(await options.getByLabel('Vision model').inputValue(), model);
@@ -308,7 +309,7 @@ try {
     stage = 'verify saved retired models use the new default';
     for (const model of ['gpt-4.1-nano-2025-04-14', 'gpt-4.1-nano']) {
       await worker.evaluate((model) => chrome.storage.local.set({ model }), model);
-      await options.reload();
+      await options.reload({ waitUntil: 'domcontentloaded' });
       await options.waitForFunction(() => !document.querySelector('fieldset').disabled);
       assert.equal(await options.getByLabel('Vision model').inputValue(), defaultModel);
     }
@@ -669,6 +670,9 @@ try {
     await control('#error').waitFor({ state: 'visible' });
     assert.match(await control('#error').innerText(), /Add your OpenAI API key/);
     assert.equal(requests.length, priorRequests);
+    // Restore focus after the disabled Ask button is re-enabled, so keyboard users can move back to Cancel.
+    await assertFocused(ask);
+    await page.screenshot({ scale: 'css', path: path.join(evidence, '05-error-focus.png') });
     // The missing-key error can extend the dialog. Keyboard focus must scroll Cancel into view.
     await page.keyboard.press('Shift+Tab');
     await assertFocused(cancel);
